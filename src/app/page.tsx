@@ -2,7 +2,7 @@ import { ArrowRight, Brain, Target, Zap } from "lucide-react";
 
 export default function Home() {
   return (
-    <div className="flex flex-col items-center justify-center px-6 py-24 sm:py-32 lg:px-8">
+    <div className="flex flex-col items-center justify-center px-6 py-24 sm:py-32 lg:px-8 animate-fade-in-up">
       <div className="max-w-2xl text-center">
         <div className="mb-8 flex justify-center">
           <div className="rounded-full bg-primary/10 px-3 py-1 text-sm font-semibold leading-6 text-primary ring-1 ring-inset ring-primary/20">
