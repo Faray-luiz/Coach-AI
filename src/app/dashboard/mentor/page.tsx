@@ -40,35 +40,28 @@ const DUMMY_ANALYSIS = {
 
 export default function MentorDashboard() {
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 p-6 hidden lg:block">
-        <div className="flex items-center gap-2 mb-12">
-          <div className="h-8 w-8 rounded-lg bg-primary" />
-          <span className="font-bold text-xl">Simi</span>
-        </div>
-        
-        <nav className="space-y-2">
-          <NavItem icon={<LayoutDashboard size={20} />} label="Dashboard" active />
-          <NavItem icon={<Users size={20} />} label="Mentorados" />
-          <NavItem icon={<MessageSquare size={20} />} label="Sessões" />
-          <NavItem icon={<Settings size={20} />} label="Configurações" />
-        </nav>
-      </aside>
-
+    <div className="bg-background">
       {/* Main Content */}
-      <main className="flex-1 p-6 lg:p-12 overflow-y-auto">
-        <header className="flex justify-between items-center mb-12">
+      <main className="max-w-7xl mx-auto px-4 py-8 sm:px-6 lg:px-8">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-12">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Olá, Mentor</h1>
-            <p className="text-foreground/40 mt-1">Aqui está a análise da sua última sessão.</p>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground">Olá, Mentor</h1>
+            <p className="text-foreground/40 mt-1 text-sm sm:text-base">Aqui está a análise da sua última sessão.</p>
           </div>
           <div className="flex items-center gap-4">
-            <button className="glass p-2 rounded-xl relative">
+            <button className="glass p-2.5 rounded-xl relative">
               <Bell size={20} />
               <span className="absolute top-2 right-2 h-2 w-2 rounded-full bg-primary" />
             </button>
-            <div className="h-10 w-10 rounded-xl bg-secondary/20 border border-secondary/30" />
+            <div className="flex items-center gap-3">
+              <div className="text-right hidden sm:block">
+                <p className="text-xs font-bold text-foreground">Top2You Mentor</p>
+                <p className="text-[10px] text-foreground/40">Sessão #42</p>
+              </div>
+              <div className="h-10 w-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
+                <Users size={20} className="text-primary" />
+              </div>
+            </div>
           </div>
         </header>
 

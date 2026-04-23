@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Coach AI - Simi Treinadora 🤖🚀
 
-## Getting Started
+Plataforma avançada de análise de mentorias baseada em IA, utilizando **Gemini 2.5 Flash**, **RAG (Retrieval-Augmented Generation)** e processamento assíncrono.
 
-First, run the development server:
+## 🌟 Funcionalidades Principais
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+- **Análise Comportamental**: Diagnóstico profundo de sessões de mentoria (Clareza, Profundidade, Conexão, Eficiência).
+- **RAG (Knowledge Base)**: Base de conhecimento dinâmica. A Simi consulta seus manuais (PDF/DOCX/TXT) para dar feedbacks personalizados.
+- **Background Jobs (Inngest)**: Processamento de IA escalável em background, evitando timeouts e garantindo alta disponibilidade.
+- **Pipeline Robusto**: Sistema de auto-recuperação (retry) e normalização de dados para 100% de confiabilidade no Dashboard.
+- **Dashboard Premium**: Visualização de métricas, equilíbrio de fala, "Golden Questions" e "Red Flags".
+
+## 🛠️ Stack Tecnológica
+
+- **Framework**: Next.js 15 (App Router)
+- **IA**: Google Gemini 2.5 Flash + text-embedding-004
+- **Banco de Dados**: Supabase (PostgreSQL + pgvector)
+- **Jobs/Workflow**: Inngest
+- **Estilização**: Tailwind CSS + Lucide Icons
+
+## 🚀 Guia de Configuração
+
+### 1. Variáveis de Ambiente
+Crie um arquivo `.env` com as seguintes chaves:
+```env
+GEMINI_API_KEY=sua_chave_do_google_ai_studio
+NEXT_PUBLIC_SUPABASE_URL=https://seu-projeto.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=sua_chave_publica_anon
+INNGEST_EVENT_KEY=sua_chave_do_inngest (opcional para local)
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### 2. Setup do Banco de Dados (Supabase)
+Execute os scripts SQL na pasta `/supabase` no editor SQL do Supabase:
+1. `rag_setup.sql`: Habilita vetores e base de conhecimento.
+2. `sessions_setup.sql`: Cria a tabela de rastreamento de sessões e jobs.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Rodando Localmente
+```bash
+npm install
+npm run dev
+```
+Acesse `http://localhost:3000`
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## 🏗️ Arquitetura do Sistema
 
-## Learn More
+### Pipeline de IA (`src/lib/ai`)
+O motor principal que orquestra o **Retrieval** (busca no banco), a **Geração** (Gemini) e a **Validação** (Zod).
 
-To learn more about Next.js, take a look at the following resources:
+### RAG Engine
+Utiliza busca por similaridade de cosseno via `pgvector` para encontrar o contexto mais relevante em milissegundos.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Background Workers (`src/inngest`)
+Gerencia o ciclo de vida da análise: `Pending` -> `Processing` -> `Completed`. Permite que análises pesadas rodem sem travar a experiência do usuário.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+---
+Desenvolvido com ❤️ para elevar o nível da mentoria global.

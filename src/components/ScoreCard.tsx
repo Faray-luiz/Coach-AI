@@ -23,9 +23,9 @@ export const ScoreCard: React.FC<ScoreCardProps> = ({ title, score, trend, descr
         {trend === 'down' && <TrendingDown className="h-4 w-4 text-red-400" />}
         {trend === 'neutral' && <Minus className="h-4 w-4 text-foreground/40" />}
       </div>
-      <div className="mt-2 flex items-baseline gap-2">
-        <span className="text-4xl font-bold text-foreground">{score}</span>
-        <span className="text-sm text-foreground/40">/100</span>
+      <div className="mt-2 flex items-baseline gap-1 sm:gap-2">
+        <span className="text-3xl sm:text-4xl font-bold text-foreground">{score}</span>
+        <span className="text-xs sm:text-sm text-foreground/40">/100</span>
       </div>
       {description && (
         <p className="mt-2 text-xs text-foreground/40">{description}</p>
