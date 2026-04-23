@@ -29,11 +29,11 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
     
           const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-pro",
+            model: "gemini-2.5-flash", // Modelo que o usuário confirmou que funciona
             generationConfig: {
-              maxOutputTokens: 2048,
+              maxOutputTokens: 8192,
               temperature: 0.1,
-              responseMimeType: "application/json",
+              // Removendo JSON mode nativo para evitar cortes bruscos do SDK
             },
             safetySettings: [
               { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -50,18 +50,29 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           
           if (!text) throw new Error("IA retornou resposta vazia");
 
-          // Extrator robusto de JSON
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            text = jsonMatch[0];
+          // Extrator ultra-robusto de JSON (pega tudo entre o primeiro { e o último })
+          const start = text.indexOf('{');
+          const end = text.lastIndexOf('}');
+          
+          if (start === -1 || end === -1) {
+            console.error("Texto sem JSON detectado:", text);
+            throw new Error("Resposta da IA não contém um objeto JSON válido");
           }
+          
+          text = text.substring(start, end + 1);
           
           let json;
           try {
             json = JSON.parse(text);
           } catch (parseError: any) {
-            console.error("Erro no JSON. Texto recebido:", text);
-            throw new Error(`JSON inválido: ${parseError.message}`);
+            // Tentativa de reparo caso esteja truncado
+            try {
+                json = JSON.parse(text + '"}]}');
+                console.warn("JSON reparado com sucesso.");
+            } catch (e) {
+                console.error("Falha no parse do JSON. Texto extraído:", text);
+                throw new Error(`JSON inválido: ${parseError.message}`);
+            }
           }
       
       // Data Normalization (Defense in Depth)
