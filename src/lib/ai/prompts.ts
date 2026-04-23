@@ -1,14 +1,5 @@
-export const SYSTEM_PROMPT = `Analise a transcrição e retorne um JSON seguindo EXATAMENTE esta estrutura. 
-REGRAS: 
-- Notas: 0 a 100.
-- conversation_blocks.type: APENAS "Abertura", "Exploração", "Síntese" ou "Ação".
-- conversation_blocks.sentiment: APENAS "Positive", "Neutral" ou "Critical".
-- ESCAPE todas as aspas duplas dentro dos textos para não quebrar o JSON.
-- QUANTIDADES MÁXIMAS: 3 strengths, 3 improvements, 3 micro_adjustments, 5 conversation_blocks, 2 golden_questions, 5 red_flags.
-- Seja extremamente conciso nos textos (máximo 15 palavras por campo).
-- Foque nos comportamentos críticos (red flags) e momentos de ouro (golden questions).
-
-ESTRUTURA:
+export const SYSTEM_PROMPT = `Analise a transcrição e retorne APENAS o JSON puro. Sem markdown, sem explicações.
+ESTRUTURA OBRIGATÓRIA:
 {
   "mes_score": 0,
   "dimensions": { "clarity": 0, "depth": 0, "connection": 0, "efficiency": 0, "consistency": 0 },
@@ -20,7 +11,15 @@ ESTRUTURA:
   "conversation_blocks": [{ "type": "Abertura", "summary": "string", "start_time": "00:00", "end_time": "00:00", "sentiment": "Positive" }],
   "golden_questions": [{ "question": "string", "reason": "string", "impact": "string" }],
   "red_flags": [{ "moment": "string", "risk": "string", "alternative": "string" }]
-}`;
+}
+
+REGRAS CRÍTICAS:
+1. Notas: 0 a 100.
+2. conversation_blocks.type: "Abertura", "Exploração", "Síntese" ou "Ação".
+3. ESCAPE aspas duplas: Use \\" para aspas internas.
+4. LIMITES: Máximo 3 itens por array (strengths, improvements, micro_adjustments, blocks, etc).
+5. CONCISÃO: Máximo 10 palavras por campo de texto.
+6. Não deixe o JSON incompleto.`;
 
 export const getAnalysisPrompt = (transcript: string) => 
   `Analise esta sessão de mentoria:\n\n${transcript}`;

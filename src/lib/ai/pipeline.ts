@@ -43,16 +43,34 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
 
       const result = await model.generateContent(prompt);
       const response = await result.response;
-      const text = response.text();
+      let text = response.text();
       
       if (!text) throw new Error("Empty AI response");
+
+      // Limpeza de Markdown (caso o modelo ignore o responseMimeType)
+      text = text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
       
       let json;
       try {
         json = JSON.parse(text);
       } catch (parseError: any) {
-        console.error("Failed to parse JSON response. Raw text:", text);
-        throw new Error(`Invalid JSON response: ${parseError.message}`);
+        console.error("Failed to parse JSON. Position:", parseError.message);
+        console.error("Raw text (first 500 chars):", text.substring(0, 500));
+        console.error("Raw text (last 500 chars):", text.substring(text.length - 500));
+        
+        // Tentativa desesperada de fechar um JSON truncado
+        if (text.length > 1000 && !text.endsWith("}")) {
+            try {
+                // Tenta fechar aspas e chaves caso tenha sido truncado no meio de uma string
+                const repairedText = text + '"}]}'; 
+                json = JSON.parse(repairedText);
+                console.warn("JSON was repaired successfully.");
+            } catch (e) {
+                throw new Error(`JSON malformado ou truncado. Erro: ${parseError.message}`);
+            }
+        } else {
+            throw new Error(`Erro ao processar JSON da IA: ${parseError.message}`);
+        }
       }
       
       // Data Normalization (Defense in Depth)
