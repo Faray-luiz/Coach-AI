@@ -14,19 +14,24 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
       // const context = await getRelevantContext(transcript);
       const context = "";
       
-      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+    // Trim transcript if it's too large (safety measure)
+    const trimmedTranscript = transcript.length > 20000 
+      ? transcript.substring(0, 20000) + "... [Truncated for processing]" 
+      : transcript;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
         try {
           if (attempt > 0) console.log(`Retry attempt ${attempt}...`);
           
-          const prompt = getAnalysisPrompt(transcript);
+          const prompt = getAnalysisPrompt(trimmedTranscript);
           
           // Enriquecendo o System Prompt (RAG desativado por enquanto)
           const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
     
           const model = genAI.getGenerativeModel({
-            model: "gemini-2.5-flash",
+            model: "gemini-1.5-pro",
             generationConfig: {
-              maxOutputTokens: 4096,
+              maxOutputTokens: 2048,
               temperature: 0.1,
               responseMimeType: "application/json",
             },
