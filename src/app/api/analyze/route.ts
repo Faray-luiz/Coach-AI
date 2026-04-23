@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { analyzeSession } from '@/lib/ai/pipeline';
 import { supabase } from '@/lib/supabase';
 
+export const maxDuration = 60; // Aumenta o timeout para 60 segundos
+
 export async function POST(req: Request) {
   try {
     const { transcript, mentor_id, mentee_name, topic, systemPrompt } = await req.json();
