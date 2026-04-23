@@ -1,48 +1,62 @@
 import { z } from 'zod';
 
 export const AnalysisSchema = z.object({
-  mes_score: z.number().min(0).max(100),
+  mes_score: z.number().min(0).max(100).catch(0),
   dimensions: z.object({
-    clarity: z.number().min(0).max(100),
-    depth: z.number().min(0).max(100),
-    connection: z.number().min(0).max(100),
-    efficiency: z.number().min(0).max(100),
-    consistency: z.number().min(0).max(100),
-  }),
-  strengths: z.array(z.string()),
-  improvements: z.array(z.string()),
-  micro_adjustments: z.array(z.object({
-    topic: z.string(),
-    suggestion: z.string(),
-    context_snippet: z.string().optional(),
-  })),
+    clarity: z.number().min(0).max(100).catch(0),
+    depth: z.number().min(0).max(100).catch(0),
+    connection: z.number().min(0).max(100).catch(0),
+    efficiency: z.number().min(0).max(100).catch(0),
+    consistency: z.number().min(0).max(100).catch(0),
+  }).catch({ clarity: 0, depth: 0, connection: 0, efficiency: 0, consistency: 0 }),
+  
+  strengths: z.array(z.any()).transform(arr => arr.map(String)).catch([]),
+  improvements: z.array(z.any()).transform(arr => arr.map(String)).catch([]),
+  
+  micro_adjustments: z.array(z.any()).transform(arr => 
+    arr.map(item => typeof item === 'string' 
+      ? { topic: 'Ajuste', suggestion: item } 
+      : { topic: item?.topic || 'Ajuste', suggestion: item?.suggestion || JSON.stringify(item) }
+    )
+  ).catch([]),
+
   talk_time: z.object({
-    mentor_percentage: z.number().min(0).max(100),
-    mentee_percentage: z.number().min(0).max(100),
-  }),
+    mentor_percentage: z.number().min(0).max(100).catch(50),
+    mentee_percentage: z.number().min(0).max(100).catch(50),
+  }).catch({ mentor_percentage: 50, mentee_percentage: 50 }),
+  
   detailed_stats: z.object({
-    open_questions: z.number(),
-    closed_questions: z.number(),
-    empathy_markers: z.number(),
-    looping_count: z.number(),
-  }),
-  conversation_blocks: z.array(z.object({
-    type: z.enum(['Abertura', 'Exploração', 'Síntese', 'Ação']),
-    summary: z.string().optional(),
-    start_time: z.string().optional(),
-    end_time: z.string().optional(),
-    sentiment: z.enum(['Positive', 'Neutral', 'Critical']).optional(),
-  })),
-  golden_questions: z.array(z.object({
-    question: z.string(),
-    reason: z.string(),
-    impact: z.string().optional(),
-  })).optional(),
-  red_flags: z.array(z.object({
-    moment: z.string(),
-    risk: z.string(),
-    alternative: z.string(),
-  })).optional(),
+    open_questions: z.number().catch(0),
+    closed_questions: z.number().catch(0),
+    empathy_markers: z.number().catch(0),
+    looping_count: z.number().catch(0),
+  }).catch({ open_questions: 0, closed_questions: 0, empathy_markers: 0, looping_count: 0 }),
+  
+  conversation_blocks: z.array(z.any()).transform(arr => 
+    arr.map(item => {
+      if (typeof item === 'string') return { type: 'Exploração', summary: item };
+      const typeStr = item?.type;
+      const isValidType = ['Abertura', 'Exploração', 'Síntese', 'Ação'].includes(typeStr);
+      return { 
+        type: isValidType ? typeStr : 'Exploração', 
+        summary: item?.summary || JSON.stringify(item)
+      };
+    })
+  ).catch([]),
+
+  golden_questions: z.array(z.any()).transform(arr => 
+    arr.map(item => typeof item === 'string'
+      ? { question: item, reason: 'Identificada pela IA' }
+      : { question: item?.question || JSON.stringify(item), reason: item?.reason || 'Identificada pela IA' }
+    )
+  ).catch([]),
+
+  red_flags: z.array(z.any()).transform(arr => 
+    arr.map(item => typeof item === 'string'
+      ? { moment: 'Geral', risk: item, alternative: '' }
+      : { moment: item?.moment || 'Geral', risk: item?.risk || JSON.stringify(item), alternative: item?.alternative || '' }
+    )
+  ).catch([])
 });
 
 export type Analysis = z.infer<typeof AnalysisSchema>;
