@@ -12,14 +12,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
     }
 
-    // 1. Save session (Optional in Test Mode)
+    // 1. Save session (Optional in Test Mode, but required for async)
     let sessionId = null;
     try {
       if (supabase) {
+        // Se for o ID de teste, passamos null para não quebrar a chave estrangeira (UUID)
+        const validMentorId = mentor_id === 'test-mentor' ? null : mentor_id;
+
         const { data: session, error: sessionError } = await supabase
           .from('sessions')
           .insert({
-            mentor_id,
+            mentor_id: validMentorId,
             mentee_name,
             topic,
             transcript,
@@ -27,7 +30,11 @@ export async function POST(req: Request) {
           .select()
           .single();
         
-        if (!sessionError) sessionId = session.id;
+        if (sessionError) {
+          console.error("Erro ao salvar sessão:", sessionError);
+        } else {
+          sessionId = session.id;
+        }
       }
     } catch (e) {
       console.warn('Supabase not configured or error saving session. Continuing in Test Mode.');
