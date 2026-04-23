@@ -24,9 +24,9 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
     
           const model = genAI.getGenerativeModel({
-            model: "gemini-1.5-flash-latest", // Nome mais padrão e resiliente
+            model: "gemini-2.5-flash",
             generationConfig: {
-              maxOutputTokens: 2048, // Reduzindo para focar na concisão extrema
+              maxOutputTokens: 4096,
               temperature: 0.1,
               responseMimeType: "application/json",
             },

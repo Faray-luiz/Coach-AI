@@ -28,7 +28,7 @@ export const AnalysisSchema = z.object({
   }),
   conversation_blocks: z.array(z.object({
     type: z.enum(['Abertura', 'Exploração', 'Síntese', 'Ação']),
-    summary: z.string(),
+    summary: z.string().optional(),
     start_time: z.string().optional(),
     end_time: z.string().optional(),
     sentiment: z.enum(['Positive', 'Neutral', 'Critical']).optional(),
@@ -36,7 +36,7 @@ export const AnalysisSchema = z.object({
   golden_questions: z.array(z.object({
     question: z.string(),
     reason: z.string(),
-    impact: z.string(),
+    impact: z.string().optional(),
   })).optional(),
   red_flags: z.array(z.object({
     moment: z.string(),
