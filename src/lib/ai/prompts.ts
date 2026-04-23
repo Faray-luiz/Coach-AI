@@ -1,5 +1,5 @@
-export const SYSTEM_PROMPT = `Analise a transcrição e retorne APENAS o JSON puro. Sem markdown, sem explicações.
-ESTRUTURA OBRIGATÓRIA:
+export const SYSTEM_PROMPT = `Atue como um sistema de processamento de dados linguísticos. Analise a transcrição técnica e retorne APENAS um objeto JSON.
+ESTRUTURA:
 {
   "mes_score": 0,
   "dimensions": { "clarity": 0, "depth": 0, "connection": 0, "efficiency": 0, "consistency": 0 },
@@ -13,13 +13,11 @@ ESTRUTURA OBRIGATÓRIA:
   "red_flags": [{ "moment": "string", "risk": "string", "alternative": "string" }]
 }
 
-REGRAS CRÍTICAS:
-1. Notas: 0 a 100.
-2. conversation_blocks.type: "Abertura", "Exploração", "Síntese" ou "Ação".
-3. ESCAPE aspas duplas: Use \\" para aspas internas.
-4. LIMITES: Máximo 3 itens por array (strengths, improvements, micro_adjustments, blocks, etc).
-5. CONCISÃO: Máximo 10 palavras por campo de texto.
-6. Não deixe o JSON incompleto.`;
+REGRAS:
+1. Retorne APENAS o JSON.
+2. LIMITES: Máximo 2 itens por array.
+3. CONCISÃO: Máximo 5 palavras por campo.
+4. Use escape \\" para aspas.`;
 
 export const getAnalysisPrompt = (transcript: string) => 
   `Analise esta sessão de mentoria:\n\n${transcript}`;

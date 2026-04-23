@@ -10,39 +10,37 @@ const MAX_RETRIES = 2;
 export async function analyzeSession(transcript: string, customPrompt?: string): Promise<Analysis> {
   let lastError: any;
   
-  // 1. Retrieval Stage (Buscando conhecimento relevante)
-  const context = await getRelevantContext(transcript);
-  
-  for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
-    try {
-      if (attempt > 0) console.log(`Retry attempt ${attempt}...`);
+      // 1. Retrieval Stage (Temporariamente desativado para isolar erro)
+      // const context = await getRelevantContext(transcript);
+      const context = "";
       
-      const prompt = getAnalysisPrompt(transcript);
-      
-      // Enriquecendo o System Prompt com o contexto do RAG
-      const baseSystemPrompt = customPrompt || SYSTEM_PROMPT;
-      const activeSystemPrompt = context 
-        ? `${baseSystemPrompt}\n\nUSE O CONTEXTO ABAIXO COMO REFERÊNCIA PARA A ANÁLISE:\n${context}`
-        : baseSystemPrompt;
-
-      const model = genAI.getGenerativeModel({
-        model: "gemini-2.5-flash",
-        generationConfig: {
-          maxOutputTokens: 8192,
-          temperature: 0.1,
-          responseMimeType: "application/json",
-        },
-        safetySettings: [
-          { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-          { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
-          { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
-          { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
-        ],
-        systemInstruction: activeSystemPrompt,
-      });
-
-      const result = await model.generateContent(prompt);
-      const response = await result.response;
+      for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+        try {
+          if (attempt > 0) console.log(`Retry attempt ${attempt}...`);
+          
+          const prompt = getAnalysisPrompt(transcript);
+          
+          // Enriquecendo o System Prompt (RAG desativado por enquanto)
+          const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
+    
+          const model = genAI.getGenerativeModel({
+            model: "gemini-2.0-flash", // Tentando a versão 2.0 que é mais estável que a 2.5
+            generationConfig: {
+              maxOutputTokens: 8192,
+              temperature: 0.1,
+              // Removendo JSON mode nativo para ver se estabiliza o truncamento
+            },
+            safetySettings: [
+              { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+              { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },
+              { category: HarmCategory.HARM_CATEGORY_SEXUALLY_EXPLICIT, threshold: HarmBlockThreshold.BLOCK_NONE },
+              { category: HarmCategory.HARM_CATEGORY_DANGEROUS_CONTENT, threshold: HarmBlockThreshold.BLOCK_NONE },
+            ],
+            systemInstruction: activeSystemPrompt,
+          });
+    
+          const result = await model.generateContent(prompt);
+          const response = await result.response;
       let text = response.text();
       
       if (!text) throw new Error("Empty AI response");
