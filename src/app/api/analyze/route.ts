@@ -12,32 +12,34 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
     }
 
-    // 1. Save session (Optional in Test Mode, but required for async)
+    // 1. Save session (Required for async background processing)
     let sessionId = null;
     try {
-      if (supabase) {
-        // Se for o ID de teste, passamos null para não quebrar a chave estrangeira (UUID)
-        const validMentorId = mentor_id === 'test-mentor' ? null : mentor_id;
-
-        const { data: session, error: sessionError } = await supabase
-          .from('sessions')
-          .insert({
-            mentor_id: validMentorId,
-            mentee_name,
-            topic,
-            transcript,
-          })
-          .select()
-          .single();
-        
-        if (sessionError) {
-          console.error("Erro ao salvar sessão:", sessionError);
-        } else {
-          sessionId = session.id;
-        }
+      if (!supabase) {
+        throw new Error("Supabase is required for background processing to track the session.");
       }
-    } catch (e) {
-      console.warn('Supabase not configured or error saving session. Continuing in Test Mode.');
+
+      const { data: session, error: sessionError } = await supabase
+        .from('mentorship_sessions')
+        .insert({
+          mentor_id: mentor_id === 'test-mentor' ? 'test-mentor' : mentor_id,
+          mentee_name,
+          topic,
+          transcript,
+          status: 'processing'
+        })
+        .select()
+        .single();
+      
+      if (sessionError) {
+        console.error("Erro ao salvar sessão no Supabase:", sessionError);
+        throw new Error(`Erro de Banco de Dados: ${sessionError.message || JSON.stringify(sessionError)}`);
+      } else {
+        sessionId = session.id;
+      }
+    } catch (e: any) {
+      console.warn('Erro fatal ao preparar tracking assíncrono:', e);
+      throw e; // Lança o erro real para o frontend
     }
 
     // 2. Dispatch Inngest Event for Background Processing
@@ -48,8 +50,6 @@ export async function POST(req: Request) {
         name: 'mentorship/session.received',
         data: { transcript, sessionId, systemPrompt }
       });
-    } else {
-      throw new Error("Supabase is required for background processing to track the session.");
     }
 
     // 3. Return immediately

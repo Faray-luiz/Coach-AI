@@ -22,24 +22,16 @@ export const processMentorshipAnalysis = inngest.createFunction(
       if (!supabase) throw new Error("Supabase is required to save results");
       
       const { error } = await supabase
-        .from('analyses')
-        .insert({
-          session_id: sessionId,
-          mes_score: analysisData.mes_score,
-          clarity_score: analysisData.dimensions.clarity,
-          depth_score: analysisData.dimensions.depth,
-          connection_score: analysisData.dimensions.connection,
-          efficiency_score: analysisData.dimensions.efficiency,
-          consistency_score: analysisData.dimensions.consistency,
-          strengths: analysisData.strengths,
-          improvements: analysisData.improvements,
-          micro_adjustments: analysisData.micro_adjustments,
-          conversation_blocks: analysisData.conversation_blocks,
-          // golden_questions and red_flags aren't in initial schema, but keep them if added later
-        });
+        .from('mentorship_sessions')
+        .update({
+          analysis_result: analysisData,
+          status: 'completed',
+          processed_at: new Date().toISOString()
+        })
+        .eq('id', sessionId);
         
       if (error) {
-        console.error("Error inserting into analyses:", error);
+        console.error("Error inserting into mentorship_sessions:", error);
         throw new Error(`Failed to save analysis: ${error.message}`);
       }
     });

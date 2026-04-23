@@ -14,38 +14,28 @@ export async function GET(req: Request) {
   }
 
   try {
-    // Check if the analysis exists
-    const { data: analysis, error } = await supabase
-      .from('analyses')
-      .select('*')
-      .eq('session_id', sessionId)
+    // Check if the session exists and its status
+    const { data: session, error } = await supabase
+      .from('mentorship_sessions')
+      .select('status, analysis_result')
+      .eq('id', sessionId)
       .single();
 
     if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-      console.error('Error fetching analysis:', error);
-      return NextResponse.json({ error: 'Error fetching analysis' }, { status: 500 });
+      console.error('Error fetching session:', error);
+      return NextResponse.json({ error: 'Error fetching session' }, { status: 500 });
     }
 
-    if (analysis) {
-      // Formata os dados de volta para o formato que o frontend espera (como se fosse a resposta da IA direta)
-      const formattedAnalysis = {
-        mes_score: analysis.mes_score,
-        dimensions: {
-          clarity: analysis.clarity_score,
-          depth: analysis.depth_score,
-          connection: analysis.connection_score,
-          efficiency: analysis.efficiency_score,
-          consistency: analysis.consistency_score,
-        },
-        strengths: analysis.strengths || [],
-        improvements: analysis.improvements || [],
-        micro_adjustments: analysis.micro_adjustments || [],
-        conversation_blocks: analysis.conversation_blocks || [],
-      };
-
-      return NextResponse.json({ status: 'completed', analysis: formattedAnalysis });
+    if (session) {
+      if (session.status === 'completed' && session.analysis_result) {
+        return NextResponse.json({ status: 'completed', analysis: session.analysis_result });
+      } else if (session.status === 'failed') {
+        return NextResponse.json({ error: 'Falha no processamento da IA' }, { status: 500 });
+      } else {
+        return NextResponse.json({ status: 'processing' });
+      }
     } else {
-      return NextResponse.json({ status: 'processing' });
+      return NextResponse.json({ error: 'Session not found' }, { status: 404 });
     }
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
