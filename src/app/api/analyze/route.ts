@@ -33,35 +33,22 @@ export async function POST(req: Request) {
       console.warn('Supabase not configured or error saving session. Continuing in Test Mode.');
     }
 
-    // 2. Run AI Analysis (This is the core)
-    const analysisData = await analyzeSession(transcript, systemPrompt);
-
-    // 3. Save analysis results (Optional in Test Mode)
-    if (sessionId && supabase) {
-      try {
-        await supabase
-          .from('analyses')
-          .insert({
-            session_id: sessionId,
-            mes_score: analysisData.mes_score,
-            clarity_score: analysisData.dimensions.clarity,
-            depth_score: analysisData.dimensions.depth,
-            connection_score: analysisData.dimensions.connection,
-            efficiency_score: analysisData.dimensions.efficiency,
-            consistency_score: analysisData.dimensions.consistency,
-            strengths: analysisData.strengths,
-            improvements: analysisData.improvements,
-            micro_adjustments: analysisData.micro_adjustments,
-            conversation_blocks: analysisData.conversation_blocks,
-          });
-      } catch (e) {
-        console.warn('Error saving analysis to Supabase.');
-      }
+    // 2. Dispatch Inngest Event for Background Processing
+    if (sessionId) {
+      // Usando require para evitar problemas se o Inngest não estiver configurado perfeitamente no ambiente
+      const { inngest } = require('@/inngest/client');
+      await inngest.send({
+        name: 'mentorship/session.received',
+        data: { transcript, sessionId, systemPrompt }
+      });
+    } else {
+      throw new Error("Supabase is required for background processing to track the session.");
     }
 
+    // 3. Return immediately
     return NextResponse.json({ 
-      session: { id: sessionId, mentor_id, mentee_name, topic, transcript },
-      analysis: analysisData 
+      status: 'processing',
+      session: { id: sessionId, mentor_id, mentee_name, topic }
     });
   } catch (error: any) {
     console.error('API Error:', error);

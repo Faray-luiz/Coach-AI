@@ -15,11 +15,8 @@ export default function TestAnalysisPage() {
     setIsLoading(true);
     setResult(null);
     
-    // In a real test, we'd call the API
-    // For this demonstration, we'll simulate the API call or 
-    // if the user provides the key, it will work via the API route.
-    
     try {
+      // 1. Inicia o Job
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -34,14 +31,43 @@ export default function TestAnalysisPage() {
 
       const data = await response.json();
       if (data.error) {
-        const errorMsg = data.details ? `${data.error}: ${data.details}` : data.error;
-        throw new Error(errorMsg);
+        throw new Error(data.details ? `${data.error}: ${data.details}` : data.error);
       }
-      setResult(data.analysis);
+
+      if (data.status === 'processing' && data.session?.id) {
+        // 2. Inicia o Polling
+        const sessionId = data.session.id;
+        
+        const pollInterval = setInterval(async () => {
+          try {
+            const statusResponse = await fetch(`/api/analyze/status?sessionId=${sessionId}`);
+            const statusData = await statusResponse.json();
+            
+            if (statusData.status === 'completed') {
+              clearInterval(pollInterval);
+              setResult(statusData.analysis);
+              setIsLoading(false);
+            } else if (statusData.error) {
+              clearInterval(pollInterval);
+              alert(`Erro no processamento: ${statusData.error}`);
+              setIsLoading(false);
+            }
+            // se for 'processing', continua rodando
+          } catch (e) {
+             // ignora erros de rede temporários no polling
+          }
+        }, 3000);
+      } else if (data.analysis) {
+        // Fallback caso a API retorne sincronicamente por algum motivo
+        setResult(data.analysis);
+        setIsLoading(false);
+      } else {
+        throw new Error("Não foi possível iniciar o processamento.");
+      }
+
     } catch (error: any) {
       console.error(error);
       alert(`Erro na Análise: ${error.message}`);
-    } finally {
       setIsLoading(false);
     }
   };
