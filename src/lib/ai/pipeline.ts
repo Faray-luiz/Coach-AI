@@ -24,11 +24,11 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
     
           const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash", // Tentando a versão 2.0 que é mais estável que a 2.5
+            model: "gemini-1.5-flash-latest", // Nome mais padrão e resiliente
             generationConfig: {
-              maxOutputTokens: 8192,
+              maxOutputTokens: 2048, // Reduzindo para focar na concisão extrema
               temperature: 0.1,
-              // Removendo JSON mode nativo para ver se estabiliza o truncamento
+              responseMimeType: "application/json",
             },
             safetySettings: [
               { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
@@ -41,35 +41,23 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
     
           const result = await model.generateContent(prompt);
           const response = await result.response;
-      let text = response.text();
-      
-      if (!text) throw new Error("Empty AI response");
+          let text = response.text();
+          
+          if (!text) throw new Error("IA retornou resposta vazia");
 
-      // Limpeza de Markdown (caso o modelo ignore o responseMimeType)
-      text = text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
-      
-      let json;
-      try {
-        json = JSON.parse(text);
-      } catch (parseError: any) {
-        console.error("Failed to parse JSON. Position:", parseError.message);
-        console.error("Raw text (first 500 chars):", text.substring(0, 500));
-        console.error("Raw text (last 500 chars):", text.substring(text.length - 500));
-        
-        // Tentativa desesperada de fechar um JSON truncado
-        if (text.length > 1000 && !text.endsWith("}")) {
-            try {
-                // Tenta fechar aspas e chaves caso tenha sido truncado no meio de uma string
-                const repairedText = text + '"}]}'; 
-                json = JSON.parse(repairedText);
-                console.warn("JSON was repaired successfully.");
-            } catch (e) {
-                throw new Error(`JSON malformado ou truncado. Erro: ${parseError.message}`);
-            }
-        } else {
-            throw new Error(`Erro ao processar JSON da IA: ${parseError.message}`);
-        }
-      }
+          // Extrator robusto de JSON
+          const jsonMatch = text.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            text = jsonMatch[0];
+          }
+          
+          let json;
+          try {
+            json = JSON.parse(text);
+          } catch (parseError: any) {
+            console.error("Erro no JSON. Texto recebido:", text);
+            throw new Error(`JSON inválido: ${parseError.message}`);
+          }
       
       // Data Normalization (Defense in Depth)
       if (json.dimensions) {
