@@ -12,13 +12,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
     }
 
-    // 1. Save session (Required for async background processing)
+    // 1. Configurar fallback síncrono caso o Supabase não exista
+    if (!supabase) {
+      console.warn("Supabase não configurado. Rodando de forma síncrona como fallback (sujeito a timeout).");
+      const { analyzeSession } = require('@/lib/ai/pipeline');
+      const analysisData = await analyzeSession(transcript, systemPrompt);
+      return NextResponse.json({ analysis: analysisData });
+    }
+
+    // 2. Fluxo Assíncrono (com Supabase e Inngest)
     let sessionId = null;
     try {
-      if (!supabase) {
-        throw new Error("Supabase is required for background processing to track the session.");
-      }
-
       const { data: session, error: sessionError } = await supabase
         .from('mentorship_sessions')
         .insert({
@@ -39,12 +43,11 @@ export async function POST(req: Request) {
       }
     } catch (e: any) {
       console.warn('Erro fatal ao preparar tracking assíncrono:', e);
-      throw e; // Lança o erro real para o frontend
+      throw e; 
     }
 
-    // 2. Dispatch Inngest Event for Background Processing
+    // Dispatch Inngest Event
     if (sessionId) {
-      // Usando require para evitar problemas se o Inngest não estiver configurado perfeitamente no ambiente
       const { inngest } = require('@/inngest/client');
       await inngest.send({
         name: 'mentorship/session.received',
@@ -52,7 +55,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 3. Return immediately
+    // Return status de processamento
     return NextResponse.json({ 
       status: 'processing',
       session: { id: sessionId, mentor_id, mentee_name, topic }
