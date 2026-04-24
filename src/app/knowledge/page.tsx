@@ -23,6 +23,18 @@ export default function KnowledgePage() {
         body: formData,
       });
 
+      // Se o arquivo for muito grande, o Vercel/Next retorna 413 antes mesmo de chegar na nossa rota
+      if (response.status === 413) {
+        throw new Error("O arquivo é muito grande para o servidor (limite de 4.5MB no Vercel). Tente dividir o PDF em arquivos menores.");
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Server returned non-JSON response:", text);
+        throw new Error(`Erro inesperado do servidor (${response.status}). Verifique os logs de produção.`);
+      }
+
       const data = await response.json();
 
       if (data.error) throw new Error(data.details || data.error);
@@ -33,7 +45,11 @@ export default function KnowledgePage() {
       });
       setFile(null);
     } catch (error: any) {
-      setStatus({ type: 'error', message: error.message });
+      console.error("Upload Error:", error);
+      setStatus({ 
+        type: 'error', 
+        message: error.message || "Ocorreu um erro ao tentar enviar o arquivo."
+      });
     } finally {
       setIsUploading(false);
     }

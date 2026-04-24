@@ -6,6 +6,7 @@ import { Logger } from '@/lib/logger';
 import mammoth from 'mammoth';
 
 export async function POST(req: NextRequest) {
+  Logger.info("Receiving knowledge upload request");
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
