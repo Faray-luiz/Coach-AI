@@ -2,35 +2,35 @@ import { createHash } from 'crypto';
 import { supabase } from '@/lib/supabase';
 import { analyzeSession } from '@/lib/ai/pipeline';
 import { Analysis } from '@/lib/ai/schemas';
+import { Logger } from '@/lib/logger';
 
 export class MentorshipService {
-  /**
-   * Gera um hash único para a transcrição para fins de cache e idempotência.
-   */
   static hashTranscript(transcript: string): string {
     return createHash('sha256').update(transcript.trim()).digest('hex');
   }
 
-  /**
-   * Busca uma análise já processada no banco de dados (Cache Layer).
-   */
   static async getCachedAnalysis(hash: string): Promise<Analysis | null> {
-    if (!supabase) return null;
-    
-    const { data } = await supabase
-      .from('mentorship_sessions')
-      .select('analysis_result')
-      .eq('transcript_hash', hash)
-      .eq('status', 'completed')
-      .not('analysis_result', 'is', null)
-      .maybeSingle();
+    return await Logger.trace("DB_Cache_Check", async () => {
+      if (!supabase) return null;
+      
+      const { data } = await supabase
+        .from('mentorship_sessions')
+        .select('analysis_result')
+        .eq('transcript_hash', hash)
+        .eq('status', 'completed')
+        .not('analysis_result', 'is', null)
+        .maybeSingle();
 
-    return data?.analysis_result as Analysis | null;
+      if (data) {
+        Logger.info("Cache HIT", { transcript_hash: hash });
+      } else {
+        Logger.info("Cache MISS", { transcript_hash: hash });
+      }
+
+      return data?.analysis_result as Analysis | null;
+    });
   }
 
-  /**
-   * Cria ou recupera uma sessão de mentoria.
-   */
   static async startSession(params: {
     transcript: string;
     mentor_id: string;
@@ -38,66 +38,71 @@ export class MentorshipService {
     topic: string;
     hash: string;
   }) {
-    if (!supabase) throw new Error('Supabase client missing');
+    return await Logger.trace("DB_Start_Session", async () => {
+      if (!supabase) throw new Error('Supabase client missing');
 
-    // Tenta encontrar uma sessão existente com esse hash
-    const { data: existing } = await supabase
-      .from('mentorship_sessions')
-      .select('id, status')
-      .eq('transcript_hash', params.hash)
-      .maybeSingle();
+      const { data: existing } = await supabase
+        .from('mentorship_sessions')
+        .select('id, status')
+        .eq('transcript_hash', params.hash)
+        .maybeSingle();
 
-    if (existing) return existing;
+      if (existing) {
+        Logger.info("Session already exists", { sessionId: existing.id });
+        return existing;
+      }
 
-    // Se não existe, cria uma nova
-    const { data: session, error } = await supabase
-      .from('mentorship_sessions')
-      .insert({
-        mentor_id: params.mentor_id,
-        mentee_name: params.mentee_name,
-        topic: params.topic,
-        transcript: params.transcript,
-        transcript_hash: params.hash,
-        status: 'pending',
-      })
-      .select('id, status')
-      .single();
+      const { data: session, error } = await supabase
+        .from('mentorship_sessions')
+        .insert({
+          mentor_id: params.mentor_id,
+          mentee_name: params.mentee_name,
+          topic: params.topic,
+          transcript: params.transcript,
+          transcript_hash: params.hash,
+          status: 'pending',
+        })
+        .select('id, status')
+        .single();
 
-    if (error) throw error;
-    return session;
+      if (error) throw error;
+      return session;
+    });
   }
 
-  /**
-   * Orquestra a execução da análise via IA e atualiza o banco.
-   */
   static async processAnalysis(sessionId: string, transcript: string, systemPrompt?: string): Promise<Analysis> {
-    console.log(`[MentorshipService] Iniciando análise para sessão ${sessionId}`);
-    
-    try {
-      const analysis = await analyzeSession(transcript, systemPrompt);
+    return await Logger.trace("Domain_Process_Analysis", async () => {
+      Logger.info(`Processing analysis`, { sessionId });
+      
+      try {
+        const analysis = await analyzeSession(transcript, systemPrompt);
 
-      if (supabase) {
-        const { error } = await supabase
-          .from('mentorship_sessions')
-          .update({
-            analysis_result: analysis,
-            status: 'completed',
-            processed_at: new Date().toISOString(),
-          })
-          .eq('id', sessionId);
-          
-        if (error) console.error(`[MentorshipService] Erro ao salvar resultado: ${error.message}`);
-      }
+        if (supabase) {
+          await Logger.trace("DB_Save_Result", async () => {
+            const { error } = await supabase
+              .from('mentorship_sessions')
+              .update({
+                analysis_result: analysis,
+                status: 'completed',
+                processed_at: new Date().toISOString(),
+              })
+              .eq('id', sessionId);
+              
+            if (error) throw error;
+          });
+        }
 
-      return analysis;
-    } catch (error) {
-      if (supabase) {
-        await supabase
-          .from('mentorship_sessions')
-          .update({ status: 'failed' })
-          .eq('id', sessionId);
+        return analysis;
+      } catch (error) {
+        if (supabase) {
+          await supabase
+            .from('mentorship_sessions')
+            .update({ status: 'failed' })
+            .eq('id', sessionId);
+        }
+        throw error;
       }
-      throw error;
-    }
+    }, { sessionId });
   }
 }
+

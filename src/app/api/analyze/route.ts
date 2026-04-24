@@ -33,8 +33,8 @@ export async function POST(req: Request) {
       await inngest.send({
         name: 'mentorship/session.received',
         data: { sessionId: session.id, transcript, systemPrompt },
-        // Idempotency: Se houver outro evento com o mesmo sessionId em voo, o Inngest ignora
-        idempotencyKey: `analyze-${session.id}`
+        // Idempotency: Se houver outro evento com o mesmo ID em 24h, o Inngest ignora
+        id: `analyze-${session.id}`
       });
     }
 
