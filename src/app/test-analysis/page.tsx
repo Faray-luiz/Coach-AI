@@ -35,10 +35,21 @@ export default function TestAnalysisPage() {
       }
 
       if (data.status === 'processing' && data.session?.id) {
-        // 2. Inicia o Polling
+        // 2. Inicia o Polling com timeout de 3 minutos
         const sessionId = data.session.id;
+        let pollCount = 0;
+        const MAX_POLLS = 60; // 60 × 3s = 3 minutos
         
         const pollInterval = setInterval(async () => {
+          pollCount++;
+          
+          if (pollCount > MAX_POLLS) {
+            clearInterval(pollInterval);
+            alert('A análise está demorando mais que o esperado. Por favor, tente novamente.');
+            setIsLoading(false);
+            return;
+          }
+
           try {
             const statusResponse = await fetch(`/api/analyze/status?sessionId=${sessionId}`);
             const statusData = await statusResponse.json();
@@ -47,9 +58,9 @@ export default function TestAnalysisPage() {
               clearInterval(pollInterval);
               setResult(statusData.analysis);
               setIsLoading(false);
-            } else if (statusData.error) {
+            } else if (statusData.error || statusData.status === 'failed') {
               clearInterval(pollInterval);
-              alert(`Erro no processamento: ${statusData.error}`);
+              alert(`Erro no processamento: ${statusData.error || 'Falha desconhecida no servidor.'}`);
               setIsLoading(false);
             }
             // se for 'processing', continua rodando
