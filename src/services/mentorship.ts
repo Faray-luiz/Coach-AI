@@ -4,11 +4,24 @@ import { analyzeSession } from '@/lib/ai/pipeline';
 import { Analysis } from '@/lib/ai/schemas';
 import { Logger } from '@/lib/logger';
 
+/**
+ * Serviço de domínio para gestão de sessões de mentoria.
+ * Centraliza a lógica de cache, persistência e orquestração de IA.
+ */
 export class MentorshipService {
+  /**
+   * Gera um hash SHA-256 único para a transcrição.
+   * Usado para identificar conteúdos idênticos e evitar re-processamento (Idempotência).
+   */
   static hashTranscript(transcript: string): string {
     return createHash('sha256').update(transcript.trim()).digest('hex');
   }
 
+  /**
+   * Busca uma análise já concluída no cache do banco de dados.
+   * @param hash O hash da transcrição.
+   * @returns O resultado da análise ou null se não houver cache.
+   */
   static async getCachedAnalysis(hash: string): Promise<Analysis | null> {
     return await Logger.trace("DB_Cache_Check", async () => {
       if (!supabase) return null;
@@ -31,6 +44,10 @@ export class MentorshipService {
     });
   }
 
+  /**
+   * Inicializa uma sessão de mentoria no banco de dados.
+   * Se já existir uma sessão com o mesmo hash, retorna a existente.
+   */
   static async startSession(params: {
     transcript: string;
     mentor_id: string;
@@ -70,6 +87,12 @@ export class MentorshipService {
     });
   }
 
+  /**
+   * Orquestra o processamento da análise via IA e atualiza o status final.
+   * @param sessionId ID da sessão no banco.
+   * @param transcript Texto da transcrição.
+   * @param systemPrompt Prompt opcional para customizar a IA.
+   */
   static async processAnalysis(sessionId: string, transcript: string, systemPrompt?: string): Promise<Analysis> {
     return await Logger.trace("Domain_Process_Analysis", async () => {
       Logger.info(`Processing analysis`, { sessionId });

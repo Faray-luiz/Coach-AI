@@ -2,91 +2,33 @@
 
 import React, { useState } from 'react';
 import { AnalysisReport } from '@/components/AnalysisReport';
-import { Play, Loader2, FileText, Brain, Zap, LayoutDashboard } from 'lucide-react';
+import { Play, Loader2, FileText, Brain, Zap, LayoutDashboard, AlertCircle } from 'lucide-react';
 import { SYSTEM_PROMPT } from '@/lib/ai/prompts';
+import { useMentorshipStore } from '@/store/useMentorshipStore';
 
 export default function TestAnalysisPage() {
   const [transcript, setTranscript] = useState('');
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
-  const [isLoading, setIsLoading] = useState(false);
-  const [result, setResult] = useState<any>(null);
-  const [fromCache, setFromCache] = useState(false);
+  const { 
+    status, 
+    analysis: result, 
+    isCached,
+    error, 
+    startAnalysis, 
+    reset 
+  } = useMentorshipStore();
+
+  const isLoading = status === 'analyzing';
 
   const handleTest = async () => {
-    setIsLoading(true);
-    setResult(null);
-    setFromCache(false);
-
-    try {
-      const response = await fetch('/api/analyze', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          transcript,
-          systemPrompt,
-          mentor_id: 'test-mentor',
-          mentee_name: 'Test Mentee',
-          topic: 'Mentoria Experimental',
-        }),
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || `HTTP ${response.status}`);
-      }
-
-      // ── Fluxo A: Cache Hit — resultado imediato ───────────────────────────
-      if (data.status === 'completed' && data.analysis) {
-        setResult(data.analysis);
-        setFromCache(data.cached === true);
-        setIsLoading(false);
-        return;
-      }
-
-      // ── Fluxo B: Job enfileirado — polling do Inngest ────────────────────
-      if (data.status === 'queued' && data.sessionId) {
-        const sessionId = data.sessionId;
-        let polls = 0;
-        const MAX_POLLS = 120; // 120 × 3s = 6 minutos
-
-        const poll = setInterval(async () => {
-          polls++;
-          if (polls > MAX_POLLS) {
-            clearInterval(poll);
-            alert('A análise está demorando mais que o esperado. Verifique o Inngest Dashboard.');
-            setIsLoading(false);
-            return;
-          }
-
-          try {
-            const statusRes = await fetch(`/api/analyze/status?sessionId=${sessionId}`);
-            const statusData = await statusRes.json();
-
-            if (statusData.status === 'completed' && statusData.analysis) {
-              clearInterval(poll);
-              setResult(statusData.analysis);
-              setFromCache(false);
-              setIsLoading(false);
-            } else if (statusData.status === 'failed' || statusData.error) {
-              clearInterval(poll);
-              alert(`Erro no processamento: ${statusData.error || 'Falha no job da IA'}`);
-              setIsLoading(false);
-            }
-            // 'pending' ou 'processing' → continua polling
-          } catch (_) {
-            // ignora falhas de rede temporárias no polling
-          }
-        }, 3000);
-        return;
-      }
-
-      throw new Error('Resposta inesperada do servidor.');
-    } catch (error: any) {
-      console.error(error);
-      alert(`Erro na Análise: ${error.message}`);
-      setIsLoading(false);
-    }
+    if (!transcript) return;
+    
+    await startAnalysis({
+      transcript,
+      mentor_id: 'test-mentor',
+      mentee_name: 'Test Mentee',
+      topic: 'Mentoria Experimental',
+    });
   };
 
 
@@ -206,9 +148,15 @@ Mentor: Interessante. O que te impede de marcar uma conversa de alinhamento indi
           </section>
 
           <section>
+            {error && (
+              <div className="p-4 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center gap-3 animate-fade-in mb-4">
+                <AlertCircle className="text-red-500" size={20} />
+                <p className="text-red-500 text-sm">{error}</p>
+              </div>
+            )}
             {result ? (
               <div className="flex flex-col gap-3">
-                {fromCache && (
+                {isCached && (
                   <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-4 py-2.5">
                     <span className="text-emerald-400 text-sm">⚡</span>
                     <span className="text-emerald-400 text-sm font-medium">Resultado do Cache</span>

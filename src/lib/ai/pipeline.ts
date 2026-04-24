@@ -7,21 +7,33 @@ import { getRelevantContext } from "./retrieval";
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MAX_RETRIES = 2;
 
+/**
+ * Pipeline principal de análise de mentoria.
+ * Executa RAG, chamada ao Gemini, extração de JSON e normalização.
+ * 
+ * @param transcript Texto bruto da conversa.
+ * @param customPrompt Instruções de sistema customizadas (opcional).
+ * @returns Objeto de análise validado pelo Zod.
+ */
 export async function analyzeSession(transcript: string, customPrompt?: string): Promise<Analysis> {
   return await Logger.trace("AI_Analysis_Pipeline", async () => {
-    // 1. Retrieval Stage (RAG Ativo)
+    // 1. Retrieval Stage (RAG)
+    // Busca contexto relevante na base de conhecimento para enriquecer a análise.
     const context = await getRelevantContext(transcript);
     
     let lastError: any;
+    
+    // Proteção contra transcrições excessivamente longas (limite de 20k chars)
     const trimmedTranscript = transcript.length > 20000 
       ? transcript.substring(0, 20000) + "... [Truncated]" 
       : transcript;
 
+    // Loop de Retentativa com Backoff Exponencial leve
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
         const basePrompt = getAnalysisPrompt(trimmedTranscript);
         
-        // Injeta contexto se existir
+        // Injeta contexto do RAG no início do prompt se disponível
         const prompt = context 
           ? `CONHECIMENTO PRÉVIO RELEVANTE:\n${context}\n\n---\n\n${basePrompt}`
           : basePrompt;
@@ -45,6 +57,7 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           systemInstruction: activeSystemPrompt,
         });
 
+        // 2. Geração de Conteúdo
         const result = await model.generateContent(prompt);
         const response = await result.response;
         let text = response.text();
@@ -53,6 +66,8 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
 
         Logger.info("AI raw response received", { response_length: text.length });
 
+        // 3. Extração e Limpeza de JSON
+        // O Gemini às vezes inclui markdown (```json). Extraímos apenas o objeto.
         const start = text.indexOf('{');
         const end = text.lastIndexOf('}');
         
@@ -66,6 +81,7 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
         try {
           json = JSON.parse(text);
         } catch (parseError: any) {
+          // Tentativa de reparo heurístico para JSONs truncados
           try {
             json = JSON.parse(text + '"}]}');
             Logger.warn("JSON was truncated and manually repaired");
@@ -74,7 +90,8 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           }
         }
     
-        // Data Normalization
+        // 4. Normalização e Validação
+        // Garante que scores estejam entre 0 e 100 e segue o esquema Zod.
         if (json.dimensions) {
           Object.keys(json.dimensions).forEach(key => {
             if (typeof (json.dimensions as any)[key] === 'number') {
