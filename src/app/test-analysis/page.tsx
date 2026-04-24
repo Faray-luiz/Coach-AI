@@ -105,44 +105,6 @@ Mentor: Interessante. O que te impede de marcar uma conversa de alinhamento indi
                     </>
                   )}
                 </button>
-                
-                <button 
-                  onClick={() => setResult({
-                    mes_score: 82,
-                    dimensions: { clarity: 85, depth: 70, connection: 90, efficiency: 80, consistency: 85 },
-                    strengths: ["Empatia demonstrada no início", "Alinhamento de expectativas"],
-                    improvements: ["Falta de síntese final", "Poderia aprofundar no 'porquê' do estresse"],
-                    micro_adjustments: [
-                      { topic: "Looping for Understanding", suggestion: "Antes de sugerir a 1:1, resuma o que ouviu ('Pelo que entendi...')", context_snippet: "Ah, eu mando uma mensagem no Slack..." },
-                      { topic: "Refinar o Encerramento", suggestion: "Peça ao mentorado para definir uma data para a ação.", context_snippet: "Então tá bom, até a próxima!" }
-                    ],
-                    talk_time: { mentor_percentage: 35, mentee_percentage: 65 },
-                    detailed_stats: { open_questions: 8, closed_questions: 3, empathy_markers: 5, looping_count: 4 },
-                    conversation_blocks: [
-                      { type: "Abertura", summary: "Check-in emocional e alinhamento.", start_time: "00:00", end_time: "03:00", sentiment: "Positive" },
-                      { type: "Exploração", summary: "Discussão profunda sobre liderança.", start_time: "03:00", end_time: "15:00", sentiment: "Neutral" },
-                      { type: "Síntese", summary: "Resumo dos pontos chave.", start_time: "15:00", end_time: "18:00", sentiment: "Positive" },
-                      { type: "Ação", summary: "Definição de próximos passos.", start_time: "18:00", end_time: "20:00", sentiment: "Positive" }
-                    ],
-                    golden_questions: [
-                      { 
-                        question: "Se você pudesse mudar apenas uma coisa na sua comunicação hoje, qual teria o maior impacto na equipe?", 
-                        reason: "Pergunta de escala e foco.", 
-                        impact: "O mentorado parou para refletir sobre a causa raiz em vez de sintomas." 
-                      }
-                    ],
-                    red_flags: [
-                      { 
-                        moment: "O mentor interrompeu o relato do mentee aos 04:30.", 
-                        risk: "Pode ter cortado um insight importante sobre o conflito.", 
-                        alternative: "Espere 2 segundos de silêncio antes de intervir." 
-                      }
-                    ]
-                  })}
-                  className="bg-white/5 border border-white/10 py-3 rounded-2xl font-medium text-foreground/60 hover:bg-white/10 transition-all flex items-center justify-center gap-2"
-                >
-                  <LayoutDashboard size={16} /> Ver Demo do Dashboard
-                </button>
               </div>
             </div>
           </section>
