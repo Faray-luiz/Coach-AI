@@ -10,15 +10,14 @@ export const AnalysisSchema = z.object({
     consistency: z.number().min(0).max(100).catch(0),
   }).catch({ clarity: 0, depth: 0, connection: 0, efficiency: 0, consistency: 0 }),
   
-  strengths: z.array(z.any()).transform(arr => arr.map(String)).catch([]),
-  improvements: z.array(z.any()).transform(arr => arr.map(String)).catch([]),
+  strengths: z.array(z.string()).catch([]),
+  improvements: z.array(z.string()).catch([]),
   
-  micro_adjustments: z.array(z.any()).transform(arr => 
-    arr.map(item => typeof item === 'string' 
-      ? { topic: 'Ajuste', suggestion: item } 
-      : { topic: item?.topic || 'Ajuste', suggestion: item?.suggestion || JSON.stringify(item) }
-    )
-  ).catch([]),
+  micro_adjustments: z.array(z.object({
+    topic: z.string().catch('Ajuste'),
+    suggestion: z.string().catch(''),
+    context_snippet: z.string().optional().catch('')
+  })).catch([]),
 
   talk_time: z.object({
     mentor_percentage: z.number().min(0).max(100).catch(50),
@@ -32,31 +31,25 @@ export const AnalysisSchema = z.object({
     looping_count: z.number().catch(0),
   }).catch({ open_questions: 0, closed_questions: 0, empathy_markers: 0, looping_count: 0 }),
   
-  conversation_blocks: z.array(z.any()).transform(arr => 
-    arr.map(item => {
-      if (typeof item === 'string') return { type: 'Exploração', summary: item };
-      const typeStr = item?.type;
-      const isValidType = ['Abertura', 'Exploração', 'Síntese', 'Ação'].includes(typeStr);
-      return { 
-        type: isValidType ? typeStr : 'Exploração', 
-        summary: item?.summary || JSON.stringify(item)
-      };
-    })
-  ).catch([]),
+  conversation_blocks: z.array(z.object({
+    type: z.enum(['Abertura', 'Exploração', 'Síntese', 'Ação']).catch('Exploração'),
+    summary: z.string().catch(''),
+    start_time: z.string().nullable().catch(null),
+    end_time: z.string().nullable().catch(null),
+    sentiment: z.enum(['Positive', 'Neutral', 'Critical']).catch('Neutral')
+  })).catch([]),
 
-  golden_questions: z.array(z.any()).transform(arr => 
-    arr.map(item => typeof item === 'string'
-      ? { question: item, reason: 'Identificada pela IA' }
-      : { question: item?.question || JSON.stringify(item), reason: item?.reason || 'Identificada pela IA' }
-    )
-  ).catch([]),
+  golden_questions: z.array(z.object({
+    question: z.string().catch(''),
+    reason: z.string().catch(''),
+    impact: z.string().optional().catch('')
+  })).catch([]),
 
-  red_flags: z.array(z.any()).transform(arr => 
-    arr.map(item => typeof item === 'string'
-      ? { moment: 'Geral', risk: item, alternative: '' }
-      : { moment: item?.moment || 'Geral', risk: item?.risk || JSON.stringify(item), alternative: item?.alternative || '' }
-    )
-  ).catch([])
+  red_flags: z.array(z.object({
+    moment: z.string().catch(''),
+    risk: z.string().catch(''),
+    alternative: z.string().optional().catch('')
+  })).catch([])
 });
 
 export type Analysis = z.infer<typeof AnalysisSchema>;
