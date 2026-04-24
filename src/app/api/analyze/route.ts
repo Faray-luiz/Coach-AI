@@ -1,8 +1,13 @@
 import { analyzeSession } from '@/lib/ai/pipeline';
 import { supabase } from '@/lib/supabase';
+import { createHash } from 'crypto';
 
-// Vercel Pro allows up to 300s, free tier 60s. Set to max for this plan.
+// Vercel Pro: até 300s. Free tier: 60s.
 export const maxDuration = 300;
+
+function hashTranscript(transcript: string): string {
+  return createHash('sha256').update(transcript.trim()).digest('hex');
+}
 
 export async function POST(req: Request) {
   const { transcript, mentor_id, mentee_name, topic, systemPrompt } = await req.json();
@@ -14,24 +19,52 @@ export async function POST(req: Request) {
     });
   }
 
-  // Use a TransformStream to keep the connection alive while the AI thinks
+  const transcriptHash = hashTranscript(transcript);
+
+  // ── Cache Check ─────────────────────────────────────────────────────────────
+  if (supabase) {
+    const { data: cached } = await supabase
+      .from('mentorship_sessions')
+      .select('analysis_result')
+      .eq('transcript_hash', transcriptHash)
+      .eq('status', 'completed')
+      .not('analysis_result', 'is', null)
+      .maybeSingle();
+
+    if (cached?.analysis_result) {
+      console.log(`[Cache HIT] hash=${transcriptHash.substring(0, 12)}…`);
+      return new Response(
+        JSON.stringify({ status: 'completed', analysis: cached.analysis_result, cached: true }) + '\n',
+        {
+          headers: {
+            'Content-Type': 'application/x-ndjson',
+            'Cache-Control': 'no-cache',
+          },
+        }
+      );
+    }
+    console.log(`[Cache MISS] hash=${transcriptHash.substring(0, 12)}… — chamando IA`);
+  }
+
+  // ── Streaming AI Processing ─────────────────────────────────────────────────
   const { readable, writable } = new TransformStream();
   const writer = writable.getWriter();
   const encoder = new TextEncoder();
 
   const sendChunk = (data: object) => {
-    writer.write(encoder.encode(JSON.stringify(data) + '\n'));
+    try {
+      writer.write(encoder.encode(JSON.stringify(data) + '\n'));
+    } catch (_) {
+      // writer pode estar fechado se o cliente desconectou
+    }
   };
 
-  // Run the heavy AI work in the background, streaming progress back
   (async () => {
     try {
-      // Send keep-alive pings every 15 seconds so the connection stays open
-      const keepAlive = setInterval(() => {
-        sendChunk({ status: 'processing' });
-      }, 15000);
+      // Keep-alive a cada 15s para manter a conexão aberta
+      const keepAlive = setInterval(() => sendChunk({ status: 'processing' }), 15000);
 
-      // Save session to Supabase if available (non-blocking, best-effort)
+      // Cria registro no Supabase com o hash (melhor esforço)
       let sessionId: string | null = null;
       if (supabase) {
         try {
@@ -42,32 +75,45 @@ export async function POST(req: Request) {
               mentee_name,
               topic,
               transcript,
+              transcript_hash: transcriptHash,
               status: 'processing',
             })
             .select('id')
             .single();
+
           if (!error) sessionId = data.id;
         } catch (_) {
-          // non-fatal — continue without tracking
+          // não-fatal
         }
       }
 
-      // Run the actual AI analysis
+      // ── Chamada à IA ────────────────────────────────────────────────────────
       const analysis = await analyzeSession(transcript, systemPrompt);
 
-      // Persist result back to Supabase (best-effort)
+      // Persiste o resultado + marca como completed (best-effort)
       if (supabase && sessionId) {
         await supabase
           .from('mentorship_sessions')
-          .update({ analysis_result: analysis, status: 'completed', processed_at: new Date().toISOString() })
+          .update({
+            analysis_result: analysis,
+            status: 'completed',
+            processed_at: new Date().toISOString(),
+          })
           .eq('id', sessionId);
       }
 
       clearInterval(keepAlive);
+      sendChunk({ status: 'completed', analysis, cached: false });
 
-      // Send the final result as the last chunk
-      sendChunk({ status: 'completed', analysis });
     } catch (err: any) {
+      // Marca como failed no Supabase para não poluir o cache
+      if (supabase) {
+        await supabase
+          .from('mentorship_sessions')
+          .update({ status: 'failed' })
+          .eq('transcript_hash', transcriptHash)
+          .eq('status', 'processing');
+      }
       sendChunk({ status: 'error', error: err.message || 'Erro desconhecido' });
     } finally {
       writer.close();

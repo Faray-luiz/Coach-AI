@@ -10,10 +10,12 @@ export default function TestAnalysisPage() {
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
   const [isLoading, setIsLoading] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [fromCache, setFromCache] = useState(false);
 
   const handleTest = async () => {
     setIsLoading(true);
     setResult(null);
+    setFromCache(false);
     
     try {
       const response = await fetch('/api/analyze', {
@@ -52,6 +54,7 @@ export default function TestAnalysisPage() {
             const chunk = JSON.parse(line);
             if (chunk.status === 'completed' && chunk.analysis) {
               setResult(chunk.analysis);
+              setFromCache(chunk.cached === true);
               setIsLoading(false);
               return;
             } else if (chunk.status === 'error') {
@@ -189,7 +192,16 @@ Mentor: Interessante. O que te impede de marcar uma conversa de alinhamento indi
 
           <section>
             {result ? (
-              <AnalysisReport analysis={result} />
+              <div className="flex flex-col gap-3">
+                {fromCache && (
+                  <div className="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl px-4 py-2.5">
+                    <span className="text-emerald-400 text-sm">⚡</span>
+                    <span className="text-emerald-400 text-sm font-medium">Resultado do Cache</span>
+                    <span className="text-emerald-400/60 text-xs ml-auto">Retornado instantaneamente · 0 tokens consumidos</span>
+                  </div>
+                )}
+                <AnalysisReport analysis={result} />
+              </div>
             ) : (
               <div className="glass rounded-3xl p-12 h-full flex flex-col items-center justify-center text-center">
                 <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
