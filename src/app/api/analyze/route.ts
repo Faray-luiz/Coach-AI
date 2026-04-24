@@ -1,70 +1,84 @@
-import { NextResponse } from 'next/server';
 import { analyzeSession } from '@/lib/ai/pipeline';
 import { supabase } from '@/lib/supabase';
 
-export const maxDuration = 60; // Aumenta o timeout para 60 segundos
+// Vercel Pro allows up to 300s, free tier 60s. Set to max for this plan.
+export const maxDuration = 300;
 
 export async function POST(req: Request) {
-  try {
-    const { transcript, mentor_id, mentee_name, topic, systemPrompt } = await req.json();
+  const { transcript, mentor_id, mentee_name, topic, systemPrompt } = await req.json();
 
-    if (!transcript || !mentor_id) {
-      return NextResponse.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
-    }
-
-    // 1. Configurar fallback síncrono caso o Supabase não exista
-    if (!supabase) {
-      console.warn("Supabase não configurado. Rodando de forma síncrona como fallback (sujeito a timeout).");
-      const { analyzeSession } = require('@/lib/ai/pipeline');
-      const analysisData = await analyzeSession(transcript, systemPrompt);
-      return NextResponse.json({ analysis: analysisData });
-    }
-
-    // 2. Fluxo Assíncrono (com Supabase e Inngest)
-    let sessionId = null;
-    try {
-      const { data: session, error: sessionError } = await supabase
-        .from('mentorship_sessions')
-        .insert({
-          mentor_id: mentor_id === 'test-mentor' ? 'test-mentor' : mentor_id,
-          mentee_name,
-          topic,
-          transcript,
-          status: 'processing'
-        })
-        .select()
-        .single();
-      
-      if (sessionError) {
-        console.error("Erro ao salvar sessão no Supabase:", sessionError);
-        throw new Error(`Erro de Banco de Dados: ${sessionError.message || JSON.stringify(sessionError)}`);
-      } else {
-        sessionId = session.id;
-      }
-    } catch (e: any) {
-      console.warn('Erro fatal ao preparar tracking assíncrono:', e);
-      throw e; 
-    }
-
-    // Dispatch Inngest Event
-    if (sessionId) {
-      const { inngest } = require('@/inngest/client');
-      await inngest.send({
-        name: 'mentorship/session.received',
-        data: { transcript, sessionId, systemPrompt }
-      });
-    }
-
-    // Return status de processamento
-    return NextResponse.json({ 
-      status: 'processing',
-      session: { id: sessionId, mentor_id, mentee_name, topic }
+  if (!transcript || !mentor_id) {
+    return new Response(JSON.stringify({ error: 'Faltando dados obrigatórios' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json' },
     });
-  } catch (error: any) {
-    console.error('API Error:', error);
-    return NextResponse.json({ 
-      error: 'Erro ao processar análise', 
-      details: error.message || error 
-    }, { status: 500 });
   }
+
+  // Use a TransformStream to keep the connection alive while the AI thinks
+  const { readable, writable } = new TransformStream();
+  const writer = writable.getWriter();
+  const encoder = new TextEncoder();
+
+  const sendChunk = (data: object) => {
+    writer.write(encoder.encode(JSON.stringify(data) + '\n'));
+  };
+
+  // Run the heavy AI work in the background, streaming progress back
+  (async () => {
+    try {
+      // Send keep-alive pings every 15 seconds so the connection stays open
+      const keepAlive = setInterval(() => {
+        sendChunk({ status: 'processing' });
+      }, 15000);
+
+      // Save session to Supabase if available (non-blocking, best-effort)
+      let sessionId: string | null = null;
+      if (supabase) {
+        try {
+          const { data, error } = await supabase
+            .from('mentorship_sessions')
+            .insert({
+              mentor_id: mentor_id === 'test-mentor' ? 'test-mentor' : mentor_id,
+              mentee_name,
+              topic,
+              transcript,
+              status: 'processing',
+            })
+            .select('id')
+            .single();
+          if (!error) sessionId = data.id;
+        } catch (_) {
+          // non-fatal — continue without tracking
+        }
+      }
+
+      // Run the actual AI analysis
+      const analysis = await analyzeSession(transcript, systemPrompt);
+
+      // Persist result back to Supabase (best-effort)
+      if (supabase && sessionId) {
+        await supabase
+          .from('mentorship_sessions')
+          .update({ analysis_result: analysis, status: 'completed', processed_at: new Date().toISOString() })
+          .eq('id', sessionId);
+      }
+
+      clearInterval(keepAlive);
+
+      // Send the final result as the last chunk
+      sendChunk({ status: 'completed', analysis });
+    } catch (err: any) {
+      sendChunk({ status: 'error', error: err.message || 'Erro desconhecido' });
+    } finally {
+      writer.close();
+    }
+  })();
+
+  return new Response(readable, {
+    headers: {
+      'Content-Type': 'application/x-ndjson',
+      'Transfer-Encoding': 'chunked',
+      'Cache-Control': 'no-cache',
+    },
+  });
 }

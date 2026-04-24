@@ -16,7 +16,6 @@ export default function TestAnalysisPage() {
     setResult(null);
     
     try {
-      // 1. Inicia o Job
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -29,51 +28,40 @@ export default function TestAnalysisPage() {
         })
       });
 
-      const data = await response.json();
-      if (data.error) {
-        throw new Error(data.details ? `${data.error}: ${data.details}` : data.error);
+      if (!response.ok || !response.body) {
+        const err = await response.json().catch(() => ({ error: 'Erro desconhecido no servidor' }));
+        throw new Error(err.error || `HTTP ${response.status}`);
       }
 
-      if (data.status === 'processing' && data.session?.id) {
-        // 2. Inicia o Polling com timeout de 3 minutos
-        const sessionId = data.session.id;
-        let pollCount = 0;
-        const MAX_POLLS = 60; // 60 × 3s = 3 minutos
-        
-        const pollInterval = setInterval(async () => {
-          pollCount++;
-          
-          if (pollCount > MAX_POLLS) {
-            clearInterval(pollInterval);
-            alert('A análise está demorando mais que o esperado. Por favor, tente novamente.');
-            setIsLoading(false);
-            return;
-          }
+      // Read the streaming NDJSON response line by line
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
 
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? ''; // keep incomplete last line
+
+        for (const line of lines) {
+          if (!line.trim()) continue;
           try {
-            const statusResponse = await fetch(`/api/analyze/status?sessionId=${sessionId}`);
-            const statusData = await statusResponse.json();
-            
-            if (statusData.status === 'completed') {
-              clearInterval(pollInterval);
-              setResult(statusData.analysis);
+            const chunk = JSON.parse(line);
+            if (chunk.status === 'completed' && chunk.analysis) {
+              setResult(chunk.analysis);
               setIsLoading(false);
-            } else if (statusData.error || statusData.status === 'failed') {
-              clearInterval(pollInterval);
-              alert(`Erro no processamento: ${statusData.error || 'Falha desconhecida no servidor.'}`);
-              setIsLoading(false);
+              return;
+            } else if (chunk.status === 'error') {
+              throw new Error(chunk.error);
             }
-            // se for 'processing', continua rodando
-          } catch (e) {
-             // ignora erros de rede temporários no polling
+            // 'processing' chunks are just keep-alives — ignore them
+          } catch (parseErr: any) {
+            if (parseErr.message) throw parseErr; // rethrow real errors
           }
-        }, 3000);
-      } else if (data.analysis) {
-        // Fallback caso a API retorne sincronicamente por algum motivo
-        setResult(data.analysis);
-        setIsLoading(false);
-      } else {
-        throw new Error("Não foi possível iniciar o processamento.");
+        }
       }
 
     } catch (error: any) {
@@ -82,6 +70,7 @@ export default function TestAnalysisPage() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="bg-background px-4 py-8 sm:px-6 lg:px-8">
