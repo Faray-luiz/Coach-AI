@@ -29,7 +29,7 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
           const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
     
           const model = genAI.getGenerativeModel({
-            model: "gemini-2.0-flash",
+            model: "gemini-3.1-pro-preview",
             generationConfig: {
               maxOutputTokens: 8192,
               temperature: 0.1,
