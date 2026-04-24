@@ -2,16 +2,18 @@ import { inngest } from './client';
 import { analyzeSession } from '@/lib/ai/pipeline';
 import { supabase } from '@/lib/supabase';
 
+// Inngest v4: createFunction(config, handler)
+// triggers vão dentro do config, não como segundo argumento separado
+
 export const processMentorshipAnalysis = inngest.createFunction(
   {
     id: 'analyze-mentorship-session',
     retries: 2,
-    // Timeout de 10 minutos — bem acima de qualquer timeout da Vercel
     timeouts: { finish: '10m' },
+    triggers: [{ event: 'mentorship/session.received' }],
   },
-  { event: 'mentorship/session.received' },
-  async ({ event, step }) => {
-    const { transcript, sessionId, systemPrompt, transcriptHash } = event.data;
+  async ({ event, step }: { event: any; step: any }) => {
+    const { transcript, sessionId, systemPrompt } = event.data;
 
     // Marca como 'processing' assim que o job começa
     await step.run('mark-processing', async () => {
@@ -49,17 +51,19 @@ export const processMentorshipAnalysis = inngest.createFunction(
 
 // Handler de falha: marca a sessão como 'failed' no Supabase
 export const handleAnalysisFailure = inngest.createFunction(
-  { id: 'handle-analysis-failure' },
-  { event: 'inngest/function.failed' },
-  async ({ event, step }) => {
-    const failedEvent = event.data.event;
-    if (failedEvent.name !== 'mentorship/session.received') return;
+  {
+    id: 'handle-analysis-failure',
+    triggers: [{ event: 'inngest/function.failed' }],
+  },
+  async ({ event, step }: { event: any; step: any }) => {
+    const failedEvent = event.data?.event;
+    if (failedEvent?.name !== 'mentorship/session.received') return;
 
     const sessionId = failedEvent.data?.sessionId;
     if (!sessionId || !supabase) return;
 
     await step.run('mark-failed', async () => {
-      await supabase
+      await supabase!
         .from('mentorship_sessions')
         .update({ status: 'failed' })
         .eq('id', sessionId);
