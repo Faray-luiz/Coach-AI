@@ -1,5 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
-import { Analysis } from "@/lib/ai/schemas";
+import { Analysis } from "../../src/lib/ai/schemas";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 
