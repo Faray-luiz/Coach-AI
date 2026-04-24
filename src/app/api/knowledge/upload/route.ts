@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabase } from '@/lib/supabase';
-import { generateEmbedding } from '@/lib/ai/embeddings';
+import { generateEmbedding, generateEmbeddingsBatch } from '@/lib/ai/embeddings';
 import { chunkText } from '@/lib/ai/utils';
+import { Logger } from '@/lib/logger';
 import mammoth from 'mammoth';
 
 export async function POST(req: NextRequest) {
@@ -37,35 +38,43 @@ export async function POST(req: NextRequest) {
 
     // 2. Chunking (Dividindo em pedaços de 1000 caracteres)
     const chunks = chunkText(text);
-    console.log(`Processando ${chunks.length} pedaços para o arquivo: ${file.name}`);
+    Logger.info(`Processing knowledge file`, { filename: file.name, chunks_count: chunks.length });
 
-    // 3. Gerar Embeddings e Salvar no Banco
-    // Para simplificar, faremos um por um, mas em produção o ideal é batch
-    const insertions = [];
-    
-    for (const chunk of chunks) {
-      const embedding = await generateEmbedding(chunk);
-      insertions.push({
-        content: chunk,
-        embedding: embedding,
-        metadata: {
-          filename: file.name,
-          type: file.type,
-          size: file.size,
-          processed_at: new Date().toISOString()
-        }
-      });
-    }
+    // 3. Gerar Embeddings em BATCH e Salvar no Banco
+    const analysisData = await Logger.trace('Knowledge_Batch_Processing', async () => {
+      // O Gemini suporta até 100 itens por batch, vamos garantir isso
+      const batchSize = 50;
+      const allInsertions = [];
 
-    const { error: dbError } = await supabase
-      .from('knowledge_chunks')
-      .insert(insertions);
+      for (let i = 0; i < chunks.length; i += batchSize) {
+        const batchChunks = chunks.slice(i, i + batchSize);
+        const embeddings = await generateEmbeddingsBatch(batchChunks);
+        
+        const insertions = batchChunks.map((chunk, index) => ({
+          content: chunk,
+          embedding: embeddings[index],
+          metadata: {
+            filename: file.name,
+            type: file.type,
+            size: file.size,
+            processed_at: new Date().toISOString()
+          }
+        }));
+        
+        allInsertions.push(...insertions);
+      }
 
-    if (dbError) throw dbError;
+      const { error: dbError } = await supabase
+        .from('knowledge_chunks')
+        .insert(allInsertions);
+
+      if (dbError) throw dbError;
+      return { count: allInsertions.length };
+    });
 
     return NextResponse.json({ 
       success: true, 
-      chunks_count: chunks.length,
+      chunks_count: analysisData.count,
       filename: file.name 
     });
 

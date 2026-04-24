@@ -2,20 +2,29 @@ import { GoogleGenerativeAI, HarmCategory, HarmBlockThreshold } from "@google/ge
 import { SYSTEM_PROMPT, getAnalysisPrompt } from "./prompts";
 import { AnalysisSchema, type Analysis } from "./schemas";
 import { Logger } from "@/lib/logger";
+import { getRelevantContext } from "./retrieval";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MAX_RETRIES = 2;
 
 export async function analyzeSession(transcript: string, customPrompt?: string): Promise<Analysis> {
   return await Logger.trace("AI_Analysis_Pipeline", async () => {
-    let lastError: any;
+      // 1. Retrieval Stage (RAG Ativo)
+      const context = await getRelevantContext(transcript);
+      
+    // Trim transcript if it's too large (safety measure)
     const trimmedTranscript = transcript.length > 20000 
       ? transcript.substring(0, 20000) + "... [Truncated]" 
       : transcript;
 
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
       try {
-        const prompt = getAnalysisPrompt(trimmedTranscript);
+        const basePrompt = getAnalysisPrompt(trimmedTranscript);
+        
+        // Injeta contexto se existir
+        const prompt = context 
+          ? `CONHECIMENTO PRÉVIO RELEVANTE:\n${context}\n\n---\n\n${basePrompt}`
+          : basePrompt;
         const activeSystemPrompt = customPrompt || SYSTEM_PROMPT;
 
         Logger.info(`Starting Gemini analysis attempt ${attempt}`, {
