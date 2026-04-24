@@ -69,32 +69,39 @@ export default function KnowledgePage() {
         </header>
 
         <main className="space-y-8">
-          <section className="glass rounded-3xl p-8 border-dashed border-2 border-white/10 hover:border-primary/30 transition-all group">
+          <section 
+            className="glass rounded-3xl p-8 border-dashed border-2 border-white/10 hover:border-primary/30 transition-all group cursor-pointer"
+            onClick={() => document.getElementById('file-upload')?.click()}
+          >
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <Upload className="text-foreground/20 group-hover:text-primary transition-colors" />
               </div>
               
-              <label className="cursor-pointer">
+              <div className="flex flex-col items-center">
                 <span className="text-lg font-semibold text-foreground">
                   {file ? file.name : 'Selecione um arquivo'}
                 </span>
                 <input 
+                  id="file-upload"
                   type="file" 
-                  className="hidden" 
+                  className="sr-only" 
                   accept=".pdf,.docx,.txt"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                 />
                 {!file && (
                   <p className="text-sm text-foreground/40 mt-2">
-                    Arraste ou clique para enviar PDF, DOCX ou TXT
+                    Clique aqui ou arraste para enviar PDF, DOCX ou TXT
                   </p>
                 )}
-              </label>
+              </div>
 
               {file && (
                 <button
-                  onClick={handleUpload}
+                  onClick={(e) => {
+                    e.stopPropagation(); // Evita abrir o seletor de arquivo de novo
+                    handleUpload();
+                  }}
                   disabled={isUploading}
                   className="mt-8 px-8 py-3 bg-primary rounded-xl font-bold text-white shadow-lg shadow-primary/20 hover:bg-primary/80 disabled:opacity-50 transition-all flex items-center gap-2"
                 >
