@@ -9,10 +9,10 @@ const MAX_RETRIES = 2;
 
 export async function analyzeSession(transcript: string, customPrompt?: string): Promise<Analysis> {
   return await Logger.trace("AI_Analysis_Pipeline", async () => {
-      // 1. Retrieval Stage (RAG Ativo)
-      const context = await getRelevantContext(transcript);
-      
-    // Trim transcript if it's too large (safety measure)
+    // 1. Retrieval Stage (RAG Ativo)
+    const context = await getRelevantContext(transcript);
+    
+    let lastError: any;
     const trimmedTranscript = transcript.length > 20000 
       ? transcript.substring(0, 20000) + "... [Truncated]" 
       : transcript;
@@ -97,7 +97,7 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
       }
     }
 
-    throw new Error(`Falha persistente na análise após ${MAX_RETRIES} tentativas. Erro original: ${lastError.message}`);
+    throw new Error(`Falha persistente na análise após ${MAX_RETRIES} tentativas. Erro original: ${lastError?.message || 'Erro desconhecido'}`);
   });
 }
 
