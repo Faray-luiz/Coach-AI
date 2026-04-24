@@ -1,9 +1,6 @@
 import { inngest } from './client';
-import { analyzeSession } from '@/lib/ai/pipeline';
+import { MentorshipService } from '@/services/mentorship';
 import { supabase } from '@/lib/supabase';
-
-// Inngest v4: createFunction(config, handler)
-// triggers vão dentro do config, não como segundo argumento separado
 
 export const processMentorshipAnalysis = inngest.createFunction(
   {
@@ -15,41 +12,21 @@ export const processMentorshipAnalysis = inngest.createFunction(
   async ({ event, step }: { event: any; step: any }) => {
     const { transcript, sessionId, systemPrompt } = event.data;
 
-    // Marca como 'processing' assim que o job começa
-    await step.run('mark-processing', async () => {
-      if (!supabase) throw new Error('Supabase não configurado');
-      await supabase
-        .from('mentorship_sessions')
-        .update({ status: 'processing' })
-        .eq('id', sessionId);
+    // 1. Marca como 'processing'
+    await step.run('update-status-processing', async () => {
+      if (!supabase) return;
+      await supabase.from('mentorship_sessions').update({ status: 'processing' }).eq('id', sessionId);
     });
 
-    // Roda a IA (passo durável — se falhar aqui, o Inngest retenta este passo)
-    const analysisData = await step.run('ai-analysis', async () => {
-      return await analyzeSession(transcript, systemPrompt);
+    // 2. Executa a análise via Serviço (Lógica centralizada)
+    const analysis = await step.run('run-ai-analysis', async () => {
+      return await MentorshipService.processAnalysis(sessionId, transcript, systemPrompt);
     });
 
-    // Persiste o resultado final
-    await step.run('save-result', async () => {
-      if (!supabase) throw new Error('Supabase não configurado');
-
-      const { error } = await supabase
-        .from('mentorship_sessions')
-        .update({
-          analysis_result: analysisData,
-          status: 'completed',
-          processed_at: new Date().toISOString(),
-        })
-        .eq('id', sessionId);
-
-      if (error) throw new Error(`Falha ao salvar resultado: ${error.message}`);
-    });
-
-    return { success: true, sessionId };
+    return { success: true, sessionId, stats: { talk_time: analysis.talk_time } };
   }
 );
 
-// Handler de falha: marca a sessão como 'failed' no Supabase
 export const handleAnalysisFailure = inngest.createFunction(
   {
     id: 'handle-analysis-failure',
@@ -63,10 +40,7 @@ export const handleAnalysisFailure = inngest.createFunction(
     if (!sessionId || !supabase) return;
 
     await step.run('mark-failed', async () => {
-      await supabase!
-        .from('mentorship_sessions')
-        .update({ status: 'failed' })
-        .eq('id', sessionId);
+      await supabase!.from('mentorship_sessions').update({ status: 'failed' }).eq('id', sessionId);
     });
   }
 );
