@@ -1,41 +1,68 @@
-import { inngest } from "./client";
-import { analyzeSession } from "@/lib/ai/pipeline";
-import { supabase } from "@/lib/supabase";
+import { inngest } from './client';
+import { analyzeSession } from '@/lib/ai/pipeline';
+import { supabase } from '@/lib/supabase';
 
 export const processMentorshipAnalysis = inngest.createFunction(
-  { 
-    id: "analyze-mentorship-session", 
-    retries: 3,
-    triggers: [{ event: "mentorship/session.received" }]
+  {
+    id: 'analyze-mentorship-session',
+    retries: 2,
+    // Timeout de 10 minutos — bem acima de qualquer timeout da Vercel
+    timeouts: { finish: '10m' },
   },
+  { event: 'mentorship/session.received' },
   async ({ event, step }) => {
-    const { transcript, sessionId, systemPrompt } = event.data;
+    const { transcript, sessionId, systemPrompt, transcriptHash } = event.data;
 
-    // 1. Rodar a Análise Pesada (Pipeline de IA)
-    const analysisData = await step.run("ai-analysis-pipeline", async () => {
-      // Pass the custom prompt if it exists
+    // Marca como 'processing' assim que o job começa
+    await step.run('mark-processing', async () => {
+      if (!supabase) throw new Error('Supabase não configurado');
+      await supabase
+        .from('mentorship_sessions')
+        .update({ status: 'processing' })
+        .eq('id', sessionId);
+    });
+
+    // Roda a IA (passo durável — se falhar aqui, o Inngest retenta este passo)
+    const analysisData = await step.run('ai-analysis', async () => {
       return await analyzeSession(transcript, systemPrompt);
     });
 
-    // 2. Salvar o Resultado Final na tabela correta
-    await step.run("save-final-result", async () => {
-      if (!supabase) throw new Error("Supabase is required to save results");
-      
+    // Persiste o resultado final
+    await step.run('save-result', async () => {
+      if (!supabase) throw new Error('Supabase não configurado');
+
       const { error } = await supabase
         .from('mentorship_sessions')
         .update({
           analysis_result: analysisData,
           status: 'completed',
-          processed_at: new Date().toISOString()
+          processed_at: new Date().toISOString(),
         })
         .eq('id', sessionId);
-        
-      if (error) {
-        console.error("Error inserting into mentorship_sessions:", error);
-        throw new Error(`Failed to save analysis: ${error.message}`);
-      }
+
+      if (error) throw new Error(`Falha ao salvar resultado: ${error.message}`);
     });
 
     return { success: true, sessionId };
+  }
+);
+
+// Handler de falha: marca a sessão como 'failed' no Supabase
+export const handleAnalysisFailure = inngest.createFunction(
+  { id: 'handle-analysis-failure' },
+  { event: 'inngest/function.failed' },
+  async ({ event, step }) => {
+    const failedEvent = event.data.event;
+    if (failedEvent.name !== 'mentorship/session.received') return;
+
+    const sessionId = failedEvent.data?.sessionId;
+    if (!sessionId || !supabase) return;
+
+    await step.run('mark-failed', async () => {
+      await supabase
+        .from('mentorship_sessions')
+        .update({ status: 'failed' })
+        .eq('id', sessionId);
+    });
   }
 );

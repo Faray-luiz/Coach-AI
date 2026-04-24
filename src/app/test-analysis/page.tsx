@@ -16,57 +16,72 @@ export default function TestAnalysisPage() {
     setIsLoading(true);
     setResult(null);
     setFromCache(false);
-    
+
     try {
       const response = await fetch('/api/analyze', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          transcript, 
+        body: JSON.stringify({
+          transcript,
           systemPrompt,
           mentor_id: 'test-mentor',
           mentee_name: 'Test Mentee',
-          topic: 'Mentoria Experimental'
-        })
+          topic: 'Mentoria Experimental',
+        }),
       });
 
-      if (!response.ok || !response.body) {
-        const err = await response.json().catch(() => ({ error: 'Erro desconhecido no servidor' }));
-        throw new Error(err.error || `HTTP ${response.status}`);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || `HTTP ${response.status}`);
       }
 
-      // Read the streaming NDJSON response line by line
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
+      // ── Fluxo A: Cache Hit — resultado imediato ───────────────────────────
+      if (data.status === 'completed' && data.analysis) {
+        setResult(data.analysis);
+        setFromCache(data.cached === true);
+        setIsLoading(false);
+        return;
+      }
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
+      // ── Fluxo B: Job enfileirado — polling do Inngest ────────────────────
+      if (data.status === 'queued' && data.sessionId) {
+        const sessionId = data.sessionId;
+        let polls = 0;
+        const MAX_POLLS = 120; // 120 × 3s = 6 minutos
 
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() ?? ''; // keep incomplete last line
-
-        for (const line of lines) {
-          if (!line.trim()) continue;
-          try {
-            const chunk = JSON.parse(line);
-            if (chunk.status === 'completed' && chunk.analysis) {
-              setResult(chunk.analysis);
-              setFromCache(chunk.cached === true);
-              setIsLoading(false);
-              return;
-            } else if (chunk.status === 'error') {
-              throw new Error(chunk.error);
-            }
-            // 'processing' chunks are just keep-alives — ignore them
-          } catch (parseErr: any) {
-            if (parseErr.message) throw parseErr; // rethrow real errors
+        const poll = setInterval(async () => {
+          polls++;
+          if (polls > MAX_POLLS) {
+            clearInterval(poll);
+            alert('A análise está demorando mais que o esperado. Verifique o Inngest Dashboard.');
+            setIsLoading(false);
+            return;
           }
-        }
+
+          try {
+            const statusRes = await fetch(`/api/analyze/status?sessionId=${sessionId}`);
+            const statusData = await statusRes.json();
+
+            if (statusData.status === 'completed' && statusData.analysis) {
+              clearInterval(poll);
+              setResult(statusData.analysis);
+              setFromCache(false);
+              setIsLoading(false);
+            } else if (statusData.status === 'failed' || statusData.error) {
+              clearInterval(poll);
+              alert(`Erro no processamento: ${statusData.error || 'Falha no job da IA'}`);
+              setIsLoading(false);
+            }
+            // 'pending' ou 'processing' → continua polling
+          } catch (_) {
+            // ignora falhas de rede temporárias no polling
+          }
+        }, 3000);
+        return;
       }
 
+      throw new Error('Resposta inesperada do servidor.');
     } catch (error: any) {
       console.error(error);
       alert(`Erro na Análise: ${error.message}`);

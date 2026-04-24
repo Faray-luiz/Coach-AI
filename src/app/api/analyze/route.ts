@@ -2,8 +2,8 @@ import { analyzeSession } from '@/lib/ai/pipeline';
 import { supabase } from '@/lib/supabase';
 import { createHash } from 'crypto';
 
-// Vercel Pro: até 300s. Free tier: 60s.
-export const maxDuration = 300;
+// Apenas para o cache check síncrono — curto o suficiente
+export const maxDuration = 30;
 
 function hashTranscript(transcript: string): string {
   return createHash('sha256').update(transcript.trim()).digest('hex');
@@ -13,15 +13,12 @@ export async function POST(req: Request) {
   const { transcript, mentor_id, mentee_name, topic, systemPrompt } = await req.json();
 
   if (!transcript || !mentor_id) {
-    return new Response(JSON.stringify({ error: 'Faltando dados obrigatórios' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return Response.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
   }
 
   const transcriptHash = hashTranscript(transcript);
 
-  // ── Cache Check ─────────────────────────────────────────────────────────────
+  // ── 1. Cache Check (instantâneo) ─────────────────────────────────────────
   if (supabase) {
     const { data: cached } = await supabase
       .from('mentorship_sessions')
@@ -32,99 +29,64 @@ export async function POST(req: Request) {
       .maybeSingle();
 
     if (cached?.analysis_result) {
-      console.log(`[Cache HIT] hash=${transcriptHash.substring(0, 12)}…`);
-      return new Response(
-        JSON.stringify({ status: 'completed', analysis: cached.analysis_result, cached: true }) + '\n',
-        {
-          headers: {
-            'Content-Type': 'application/x-ndjson',
-            'Cache-Control': 'no-cache',
-          },
-        }
-      );
+      console.log(`[Cache HIT] ${transcriptHash.substring(0, 12)}…`);
+      return Response.json({
+        status: 'completed',
+        analysis: cached.analysis_result,
+        cached: true,
+      });
     }
-    console.log(`[Cache MISS] hash=${transcriptHash.substring(0, 12)}… — chamando IA`);
+    console.log(`[Cache MISS] ${transcriptHash.substring(0, 12)}… — enfileirando no Inngest`);
   }
 
-  // ── Streaming AI Processing ─────────────────────────────────────────────────
-  const { readable, writable } = new TransformStream();
-  const writer = writable.getWriter();
-  const encoder = new TextEncoder();
+  // ── 2. Salvar sessão no Supabase ─────────────────────────────────────────
+  if (!supabase) {
+    return Response.json({ error: 'Supabase não configurado. Necessário para o modo async.' }, { status: 500 });
+  }
 
-  const sendChunk = (data: object) => {
-    try {
-      writer.write(encoder.encode(JSON.stringify(data) + '\n'));
-    } catch (_) {
-      // writer pode estar fechado se o cliente desconectou
-    }
-  };
+  const { data: session, error: dbError } = await supabase
+    .from('mentorship_sessions')
+    .insert({
+      mentor_id: mentor_id === 'test-mentor' ? 'test-mentor' : mentor_id,
+      mentee_name,
+      topic,
+      transcript,
+      transcript_hash: transcriptHash,
+      status: 'pending',
+    })
+    .select('id')
+    .single();
 
-  (async () => {
-    try {
-      // Keep-alive a cada 15s para manter a conexão aberta
-      const keepAlive = setInterval(() => sendChunk({ status: 'processing' }), 15000);
+  if (dbError || !session) {
+    console.error('Erro ao salvar sessão:', dbError);
+    return Response.json({ error: `Erro de banco de dados: ${dbError?.message}` }, { status: 500 });
+  }
 
-      // Cria registro no Supabase com o hash (melhor esforço)
-      let sessionId: string | null = null;
-      if (supabase) {
-        try {
-          const { data, error } = await supabase
-            .from('mentorship_sessions')
-            .insert({
-              mentor_id: mentor_id === 'test-mentor' ? 'test-mentor' : mentor_id,
-              mentee_name,
-              topic,
-              transcript,
-              transcript_hash: transcriptHash,
-              status: 'processing',
-            })
-            .select('id')
-            .single();
+  // ── 3. Disparar Inngest ───────────────────────────────────────────────────
+  try {
+    const { inngest } = await import('@/inngest/client');
+    await inngest.send({
+      name: 'mentorship/session.received',
+      data: {
+        transcript,
+        sessionId: session.id,
+        systemPrompt,
+        transcriptHash,
+      },
+    });
+  } catch (err: any) {
+    console.error('Erro ao disparar Inngest:', err);
+    // Marca como failed para não deixar em pending para sempre
+    await supabase
+      .from('mentorship_sessions')
+      .update({ status: 'failed' })
+      .eq('id', session.id);
+    return Response.json({ error: `Erro ao enfileirar job: ${err.message}` }, { status: 500 });
+  }
 
-          if (!error) sessionId = data.id;
-        } catch (_) {
-          // não-fatal
-        }
-      }
-
-      // ── Chamada à IA ────────────────────────────────────────────────────────
-      const analysis = await analyzeSession(transcript, systemPrompt);
-
-      // Persiste o resultado + marca como completed (best-effort)
-      if (supabase && sessionId) {
-        await supabase
-          .from('mentorship_sessions')
-          .update({
-            analysis_result: analysis,
-            status: 'completed',
-            processed_at: new Date().toISOString(),
-          })
-          .eq('id', sessionId);
-      }
-
-      clearInterval(keepAlive);
-      sendChunk({ status: 'completed', analysis, cached: false });
-
-    } catch (err: any) {
-      // Marca como failed no Supabase para não poluir o cache
-      if (supabase) {
-        await supabase
-          .from('mentorship_sessions')
-          .update({ status: 'failed' })
-          .eq('transcript_hash', transcriptHash)
-          .eq('status', 'processing');
-      }
-      sendChunk({ status: 'error', error: err.message || 'Erro desconhecido' });
-    } finally {
-      writer.close();
-    }
-  })();
-
-  return new Response(readable, {
-    headers: {
-      'Content-Type': 'application/x-ndjson',
-      'Transfer-Encoding': 'chunked',
-      'Cache-Control': 'no-cache',
-    },
+  // ── 4. Retornar sessionId para o frontend fazer polling ─────────────────
+  return Response.json({
+    status: 'queued',
+    sessionId: session.id,
   });
 }
