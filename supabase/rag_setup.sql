@@ -5,14 +5,14 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS knowledge_chunks (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   content TEXT NOT NULL,
-  embedding VECTOR(768), -- 768 dimensões para o modelo text-embedding-004 do Google
+  embedding VECTOR(3072), -- 3072 dimensões para o modelo gemini-embedding-001
   metadata JSONB DEFAULT '{}',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
 -- 3. Criar a função de busca por similaridade (Cosseno)
 CREATE OR REPLACE FUNCTION match_knowledge (
-  query_embedding VECTOR(768),
+  query_embedding VECTOR(3072),
   match_threshold FLOAT,
   match_count INT
 )

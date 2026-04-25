@@ -1,13 +1,13 @@
-Mentor: Olá, João! Como você está hoje?
-Mentorado: Oi, tudo bem. Um pouco estressado com a nova equipe, mas indo.
-Mentor: Entendo. O que especificamente na equipe está te deixando estressado?
-Mentorado: Sinto que as pessoas não estão entregando no prazo e eu acabo tendo que refazer muita coisa.
-Mentor: Sei como é. Você já tentou conversar com eles sobre as expectativas de prazo?
-Mentorado: Tentei, mas parece que entra por um ouvido e sai pelo outro.
-Mentor: Interessante. Como você tem estruturado essas conversas de alinhamento?
-Mentorado: Ah, eu mando uma mensagem no Slack ou falo rapidinho na reunião de segunda.
-Mentor: Certo. Talvez possamos explorar uma forma mais estruturada de delegar essas tarefas. O que você acha de marcarmos um 1:1 focado apenas em alinhamento de expectativas?
-Mentorado: Acho que pode funcionar.
-Mentor: Ótimo. Vamos tentar isso. [Pausa] Bom, nosso tempo está acabando. Alguma outra coisa?
-Mentorado: Não, por hoje é só.
-Mentor: Então tá bom, até a próxima!
+    Mentor: Olá, João! Como você está hoje?
+    Mentorado: Oi, tudo bem. Um pouco estressado com a nova equipe, mas indo.
+    Mentor: Entendo. O que especificamente na equipe está te deixando estressado?
+    Mentorado: Sinto que as pessoas não estão entregando no prazo e eu acabo tendo que refazer muita coisa.
+    Mentor: Sei como é. Você já tentou conversar com eles sobre as expectativas de prazo?
+    Mentorado: Tentei, mas parece que entra por um ouvido e sai pelo outro.
+    Mentor: Interessante. Como você tem estruturado essas conversas de alinhamento?
+    Mentorado: Ah, eu mando uma mensagem no Slack ou falo rapidinho na reunião de segunda.
+    Mentor: Certo. Talvez possamos explorar uma forma mais estruturada de delegar essas tarefas. O que você acha de marcarmos um 1:1 focado apenas em alinhamento de expectativas?
+    Mentorado: Acho que pode funcionar.
+    Mentor: Ótimo. Vamos tentar isso. [Pausa] Bom, nosso tempo está acabando. Alguma outra coisa?
+    Mentorado: Não, por hoje é só.
+    Mentor: Então tá bom, até a próxima!

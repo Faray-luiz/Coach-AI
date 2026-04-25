@@ -9,7 +9,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const model = genAI.getGenerativeModel({ model: "models/gemini-embedding-001" });
     const result = await model.embedContent(text);
     return result.embedding.values;
   } catch (error: any) {
@@ -23,7 +23,7 @@ export async function generateEmbedding(text: string): Promise<number[]> {
  */
 export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
   try {
-    const model = genAI.getGenerativeModel({ model: "text-embedding-004" });
+    const model = genAI.getGenerativeModel({ model: "models/gemini-embedding-001" });
     const result = await model.batchEmbedContents({
       requests: texts.map(t => ({ content: { role: 'user', parts: [{ text: t }] } }))
     });

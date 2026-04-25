@@ -1,0 +1,9 @@
+Metodologia de Mentoria: Técnica das 3 Âncoras
+
+A Técnica das 3 Âncoras é uma abordagem obrigatória para o encerramento de qualquer sessão de mentoria de alto impacto. Ela garante que o aprendizado seja transformado em ação imediata e compromisso emocional.
+
+1. Âncora de Ação: O mentorado deve definir exatamente UMA ação concreta que será realizada nas próximas 24 horas. Não pode ser um plano vago, deve ser uma tarefa específica.
+2. Âncora de Emoção: O mentorado deve descrever em uma palavra qual sentimento predomina ao pensar nessa ação (ex: coragem, ansiedade, entusiasmo). Isso conecta o racional ao emocional.
+3. Âncora de Compromisso: O mentorado deve escolher uma pessoa (além do mentor) para quem ele enviará uma mensagem confirmando que a ação foi realizada.
+
+Qualquer análise de sessão deve verificar se o mentor aplicou estas 3 âncoras ao final da conversa. Se não aplicou, deve ser apontado como um ponto de melhoria crítico.

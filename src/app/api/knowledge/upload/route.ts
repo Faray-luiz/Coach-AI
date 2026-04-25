@@ -20,8 +20,7 @@ export async function POST(req: NextRequest) {
 
     // 1. Extração de Texto baseada no tipo de arquivo
     if (file.name.endsWith('.pdf')) {
-      // Importação dinâmica para evitar erros de build
-      const pdf = require('pdf-parse');
+      const pdf = require('pdf-parse-fork');
       const data = await pdf(buffer);
       text = data.text;
     } else if (file.name.endsWith('.docx')) {

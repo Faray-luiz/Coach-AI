@@ -2,13 +2,14 @@
 
 import React, { useState } from 'react';
 import { AnalysisReport } from '@/components/AnalysisReport';
-import { Play, Loader2, FileText, Brain, Zap, LayoutDashboard, AlertCircle } from 'lucide-react';
+import { Play, Loader2, FileText, Brain, Zap, LayoutDashboard, AlertCircle, Trash2 } from 'lucide-react';
 import { SYSTEM_PROMPT } from '@/lib/ai/prompts';
 import { useMentorshipStore } from '@/store/useMentorshipStore';
 
 export default function TestAnalysisPage() {
   const [transcript, setTranscript] = useState('');
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
+  const [isClearing, setIsClearing] = useState(false);
   const { 
     status, 
     analysis: result, 
@@ -31,15 +32,46 @@ export default function TestAnalysisPage() {
     });
   };
 
+  const handleClearHistory = async () => {
+    if (!confirm('Tem certeza que deseja apagar TODAS as análises realizadas até agora? Esta ação não pode ser desfeita.')) return;
+    
+    setIsClearing(true);
+    try {
+      const response = await fetch('/api/analyze', { method: 'DELETE' });
+      if (response.ok) {
+        reset(); // Limpa o estado local
+        alert('Histórico removido com sucesso!');
+      } else {
+        alert('Erro ao remover histórico.');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Erro de conexão ao tentar limpar histórico.');
+    } finally {
+      setIsClearing(false);
+    }
+  };
+
 
   return (
     <div className="bg-background px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
-        <header className="mb-12">
-          <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
-            <Play className="text-primary" /> Testar Simi Treinadora
-          </h1>
-          <p className="text-foreground/40 mt-1 text-sm sm:text-base">Cole uma transcrição abaixo para ver a Simi em ação.</p>
+        <header className="mb-12 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-foreground flex items-center gap-3">
+              <Play className="text-primary" /> Testar Simi Treinadora
+            </h1>
+            <p className="text-foreground/40 mt-1 text-sm sm:text-base">Cole uma transcrição abaixo para ver a Simi em ação.</p>
+          </div>
+          
+          <button 
+            onClick={handleClearHistory}
+            disabled={isClearing}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl border border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white transition-all text-sm font-bold disabled:opacity-50"
+          >
+            {isClearing ? <Loader2 className="animate-spin" size={16} /> : <Trash2 size={16} />}
+            Limpar Histórico
+          </button>
         </header>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
