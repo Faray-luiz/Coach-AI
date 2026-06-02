@@ -10,9 +10,9 @@ export const processMentorshipAnalysis = inngest.createFunction(
     triggers: [{ event: 'mentorship/session.received' }],
   },
   async ({ event, step }: { event: any; step: any }) => {
-    const { transcript, sessionId, systemPrompt } = event.data;
+    const { sessionId, systemPrompt } = event.data;
 
-    // 1. Marca como 'processing' — só tenta se Supabase estiver acessível
+    // 1. Marca como 'processing'
     await step.run('update-status-processing', async () => {
       const isOnline = await checkSupabaseConnection();
       if (!isOnline || !supabase) return;
@@ -23,7 +23,19 @@ export const processMentorshipAnalysis = inngest.createFunction(
       if (error) console.warn('[Inngest] Falha ao marcar processing:', error.message);
     });
 
-    // 2. Executa a análise via Serviço (já tem fallback local interno)
+    // 2. Busca o transcript do banco — não vem mais no evento para evitar limite de 256KB
+    const transcript = await step.run('fetch-transcript', async () => {
+      if (!supabase) throw new Error('Supabase não configurado');
+      const { data, error } = await supabase
+        .from('mentorship_sessions')
+        .select('transcript')
+        .eq('id', sessionId)
+        .single();
+      if (error || !data?.transcript) throw new Error('Transcrição não encontrada para sessão: ' + sessionId);
+      return data.transcript as string;
+    });
+
+    // 3. Executa a análise
     const analysis = await step.run('run-ai-analysis', async () => {
       return await MentorshipService.processAnalysis(sessionId, transcript, systemPrompt);
     });

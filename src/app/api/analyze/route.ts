@@ -34,9 +34,11 @@ export async function POST(req: Request) {
     const isOnline = await checkSupabaseConnection();
     if (session.status !== 'completed') {
       if (isOnline && process.env.INNGEST_EVENT_KEY && process.env.INNGEST_EVENT_KEY !== 'key_not_set') {
+        // Não enviar transcript no evento — ele já está salvo no banco pelo
+        // startSession e buscado pelo job, evitando o limite de 256KB do Inngest.
         await inngest.send({
           name: 'mentorship/session.received',
-          data: { sessionId: session.id, transcript, systemPrompt },
+          data: { sessionId: session.id, systemPrompt },
           id: `analyze-${session.id}`
         });
       } else {
