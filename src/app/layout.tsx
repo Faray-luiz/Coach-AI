@@ -3,7 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/Navbar";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], weight: ["400", "500", "600", "700"] });
 
 export const metadata: Metadata = {
   title: "Simi Treinadora | Top2You",
@@ -17,15 +17,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR">
-      <body className={`${inter.className} min-h-screen selection:bg-primary/30`}>
+      <body className={`${inter.className} min-h-screen bg-background`}>
         <Navbar />
-        <div className="relative flex min-h-screen flex-col pt-16">
-          {/* Subtle background glow */}
-          <div className="pointer-events-none fixed inset-0 flex items-center justify-center bg-background">
-            <div className="h-[500px] w-[500px] rounded-full bg-primary/10 blur-[120px]" />
-          </div>
-          
-          <main className="relative flex-1">
+        <div className="flex min-h-screen flex-col pt-16">
+          <main className="flex-1">
             {children}
           </main>
         </div>

@@ -2,179 +2,162 @@
 
 import React, { useEffect } from 'react';
 import { ScoreCard } from '@/components/ScoreCard';
-import { Users, BookOpen, Star, TrendingUp, Filter, Download, Info } from 'lucide-react';
+import { Users, BookOpen, Star, TrendingUp, Filter, Download, Info, BarChart2 } from 'lucide-react';
 import { useMentorshipStore } from '@/store/useMentorshipStore';
 
 export default function AdminDashboard() {
   const { sessions, fetchSessions } = useMentorshipStore();
 
-  useEffect(() => {
-    fetchSessions();
-  }, [fetchSessions]);
+  useEffect(() => { fetchSessions(); }, [fetchSessions]);
 
-  const completedSessions = sessions.filter(s => s.status === 'completed' && s.analysis_result);
-  const totalSessionsCount = completedSessions.length;
-
-  // Cálculo das métricas reais
+  const completed = sessions.filter(s => s.status === 'completed' && s.analysis_result);
+  const total = completed.length;
   const uniqueMentors = new Set(sessions.map(s => s.mentor_id).filter(Boolean));
-  
-  const mentorsValue = totalSessionsCount > 0 ? uniqueMentors.size.toString() : '42';
-  const sessionsValue = totalSessionsCount > 0 ? totalSessionsCount.toString() : '1.284';
-  
-  let mesValue = '78.5';
-  if (totalSessionsCount > 0) {
-    const sum = completedSessions.reduce((acc, s) => acc + (s.analysis_result?.mes_score || 0), 0);
-    mesValue = (sum / totalSessionsCount).toFixed(1);
+
+  let mesAvg = 78.5;
+  if (total > 0) {
+    mesAvg = completed.reduce((acc, s) => acc + (s.analysis_result?.mes_score || 0), 0) / total;
   }
 
-  const engagementValue = totalSessionsCount > 0 ? '92%' : '89%';
-
-  const PROGRAM_STATS = [
-    { title: 'Total de Mentores', value: mentorsValue, icon: <Users size={20} /> },
-    { title: 'Sessões Analisadas', value: sessionsValue, icon: <BookOpen size={20} /> },
-    { title: 'MES Médio', value: mesValue, icon: <Star size={20} /> },
-    { title: 'Engajamento', value: engagementValue, icon: <TrendingUp size={20} /> },
+  const STATS = [
+    { label: 'Total de Mentores',  value: total > 0 ? uniqueMentors.size.toString() : '42',      icon: Users },
+    { label: 'Sessões Analisadas', value: total > 0 ? total.toString() : '1.284',                 icon: BookOpen },
+    { label: 'MES Médio',          value: total > 0 ? mesAvg.toFixed(1) : '78.5',                 icon: Star },
+    { label: 'Engajamento',        value: total > 0 ? '92%' : '89%',                              icon: TrendingUp },
   ];
 
-  // Cálculo da saúde por dimensão
-  let clarity = 84;
-  let depth = 72;
-  let connection = 91;
-  let efficiency = 68;
-  let consistency = 79;
-
-  if (totalSessionsCount > 0) {
-    let sumClarity = 0, sumDepth = 0, sumConnection = 0, sumEfficiency = 0, sumConsistency = 0;
-    completedSessions.forEach(s => {
+  const dims = { clarity: 84, depth: 72, connection: 91, efficiency: 68, consistency: 79 };
+  if (total > 0) {
+    const sums = { clarity: 0, depth: 0, connection: 0, efficiency: 0, consistency: 0 };
+    completed.forEach(s => {
       const d = s.analysis_result?.dimensions;
-      if (d) {
-        sumClarity += d.clarity || 0;
-        sumDepth += d.depth || 0;
-        sumConnection += d.connection || 0;
-        sumEfficiency += d.efficiency || 0;
-        sumConsistency += d.consistency || 0;
-      }
+      if (d) { sums.clarity += d.clarity || 0; sums.depth += d.depth || 0; sums.connection += d.connection || 0; sums.efficiency += d.efficiency || 0; sums.consistency += d.consistency || 0; }
     });
-    clarity = Math.round(sumClarity / totalSessionsCount);
-    depth = Math.round(sumDepth / totalSessionsCount);
-    connection = Math.round(sumConnection / totalSessionsCount);
-    efficiency = Math.round(sumEfficiency / totalSessionsCount);
-    consistency = Math.round(sumConsistency / totalSessionsCount);
+    dims.clarity = Math.round(sums.clarity / total);
+    dims.depth = Math.round(sums.depth / total);
+    dims.connection = Math.round(sums.connection / total);
+    dims.efficiency = Math.round(sums.efficiency / total);
+    dims.consistency = Math.round(sums.consistency / total);
   }
 
   return (
     <div className="flex min-h-screen bg-background">
       {/* Sidebar */}
-      <aside className="w-64 border-r border-white/5 p-6 hidden lg:block">
-        <div className="flex items-center gap-2 mb-12">
-          <div className="h-8 w-8 rounded-lg bg-primary" />
-          <span className="font-bold text-xl">Simi</span>
+      <aside className="w-60 shrink-0 bg-surface border-r border-border hidden lg:flex flex-col p-5">
+        <div className="flex items-center gap-2.5 mb-8 px-1">
+          <div className="h-7 w-7 rounded-md bg-primary" />
+          <span className="font-bold text-base text-foreground">Simi Admin</span>
         </div>
-        
-        <nav className="space-y-2">
-          <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl bg-primary text-white shadow-lg shadow-primary/20">
-            <TrendingUp size={20} />
-            <span className="font-medium text-sm">Overview</span>
-          </a>
-          <a href="#" className="flex items-center gap-3 px-4 py-3 rounded-xl text-foreground/60 hover:bg-white/5 hover:text-foreground">
-            <Users size={20} />
-            <span className="font-medium text-sm">Mentores</span>
-          </a>
+        <nav className="space-y-1">
+          <SidebarItem icon={BarChart2} label="Overview" active />
+          <SidebarItem icon={Users} label="Mentores" />
         </nav>
       </aside>
 
-      <main className="flex-1 p-6 lg:p-12 overflow-y-auto max-w-7xl mx-auto">
-        <header className="flex flex-col sm:flex-row sm:items-end justify-between gap-6 mb-12">
+      {/* Main */}
+      <main className="flex-1 overflow-y-auto p-6 lg:p-10">
+        <header className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Visão Organizacional</h1>
-            <p className="text-foreground/40 mt-1">Status global do programa de mentoria.</p>
+            <h1 className="text-2xl font-bold text-foreground">Visão Organizacional</h1>
+            <p className="text-sm text-muted mt-0.5">Status global do programa de mentoria.</p>
           </div>
-          <div className="flex gap-3">
-            <button className="glass px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 hover:cursor-pointer">
-              <Filter size={16} /> Filtrar
+          <div className="flex gap-2">
+            <button className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-4 py-2 text-sm font-medium text-muted hover:bg-gray-50 transition-colors">
+              <Filter size={15} /> Filtrar
             </button>
-            <button className="bg-primary px-4 py-2 rounded-xl text-sm font-medium flex items-center gap-2 text-white hover:bg-primary/80 transition-colors hover:cursor-pointer">
-              <Download size={16} /> Exportar
+            <button className="inline-flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-blue-600 transition-colors">
+              <Download size={15} /> Exportar
             </button>
           </div>
         </header>
 
-        {/* Demo Warning Banner */}
-        {totalSessionsCount === 0 && (
-          <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-center gap-3 mb-8">
-            <Info className="text-amber-500 shrink-0" size={20} />
-            <p className="text-amber-500 text-sm font-medium">
-              Nota: Atualmente não há sessões reais no banco de dados. Os indicadores exibidos abaixo são dados fictícios de demonstração.
+        {/* Demo warning */}
+        {total === 0 && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-center gap-3 mb-8">
+            <Info size={16} className="text-amber-600 shrink-0" />
+            <p className="text-sm text-amber-700 font-medium">
+              Sem sessões reais no banco. Os indicadores abaixo são dados fictícios de demonstração.
             </p>
           </div>
         )}
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4 mb-12">
-          {PROGRAM_STATS.map((stat, i) => (
-            <div key={i} className="glass rounded-3xl p-6">
-              <div className="flex items-center justify-between mb-4">
-                <div className="p-2 rounded-xl bg-primary/10 text-primary">
-                  {stat.icon}
+        {/* Stats */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          {STATS.map((s, i) => (
+            <div key={i} className="card rounded-xl p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="h-8 w-8 rounded-lg bg-primary-light flex items-center justify-center">
+                  <s.icon size={16} className="text-primary" />
                 </div>
               </div>
-              <p className="text-sm font-medium text-foreground/40">{stat.title}</p>
-              <h2 className="text-3xl font-bold text-foreground mt-1">{stat.value}</h2>
+              <p className="text-xs text-muted font-medium">{s.label}</p>
+              <p className="text-2xl font-bold text-foreground mt-0.5">{s.value}</p>
             </div>
           ))}
         </div>
 
-        {/* Health by Dimension */}
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-          <section className="glass rounded-3xl p-8">
-            <h3 className="text-lg font-semibold text-foreground mb-6">Saúde por Dimensão</h3>
-            <div className="space-y-6">
-              <DimensionRow label="Clareza" score={clarity} />
-              <DimensionRow label="Profundidade" score={depth} />
-              <DimensionRow label="Conexão" score={connection} />
-              <DimensionRow label="Eficiência" score={efficiency} />
-              <DimensionRow label="Consistência" score={consistency} />
-            </div>
-          </section>
-
-          <section className="glass rounded-3xl p-8">
-            <h3 className="text-lg font-semibold text-foreground mb-6">Padrões de Comportamento</h3>
+        {/* Dimension health + Insights */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="card rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-5">Saúde por Dimensão</h3>
             <div className="space-y-4">
-              <InsightItem type="positive" text="Mentores estão dedicando mais tempo à 'Exploração' (média de 32 min)." />
-              <InsightItem type="negative" text="O índice de 'Interrupções' subiu 12% no último mês." />
-              <InsightItem type="positive" text="Adoção de 'Looping for Understanding' aumentou em 40%." />
-              <InsightItem type="warning" text="Cerca de 15% das sessões terminam sem definição de 'Ação'." />
+              <DimRow label="Clareza"      score={dims.clarity} />
+              <DimRow label="Profundidade" score={dims.depth} />
+              <DimRow label="Conexão"      score={dims.connection} />
+              <DimRow label="Eficiência"   score={dims.efficiency} />
+              <DimRow label="Consistência" score={dims.consistency} />
             </div>
-          </section>
+          </div>
+
+          <div className="card rounded-xl p-6">
+            <h3 className="text-sm font-semibold text-foreground mb-5">Padrões de Comportamento</h3>
+            <div className="space-y-3">
+              <Insight type="positive" text="Mentores dedicam mais tempo à 'Exploração' (média 32 min)." />
+              <Insight type="negative" text="Índice de interrupções subiu 12% no último mês." />
+              <Insight type="positive" text="Adoção de Looping for Understanding aumentou 40%." />
+              <Insight type="warning"  text="15% das sessões terminam sem definição de ação." />
+            </div>
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-function DimensionRow({ label, score }: { label: string; score: number }) {
+function SidebarItem({ icon: Icon, label, active }: { icon: React.ElementType; label: string; active?: boolean }) {
   return (
-    <div className="space-y-2">
-      <div className="flex justify-between text-sm">
-        <span className="text-foreground/60">{label}</span>
-        <span className="font-bold text-foreground">{score}%</span>
+    <a
+      href="#"
+      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${
+        active
+          ? 'bg-primary-light text-primary'
+          : 'text-muted hover:bg-gray-100 hover:text-foreground'
+      }`}
+    >
+      <Icon size={17} /> {label}
+    </a>
+  );
+}
+
+function DimRow({ label, score }: { label: string; score: number }) {
+  return (
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-muted">{label}</span>
+        <span className="font-semibold text-foreground">{score}%</span>
       </div>
-      <div className="h-2 w-full rounded-full bg-white/5 overflow-hidden">
-        <div className="h-full bg-primary transition-all duration-1000" style={{ width: `${score}%` }} />
+      <div className="h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+        <div className="h-full bg-primary rounded-full transition-all duration-700" style={{ width: `${score}%` }} />
       </div>
     </div>
   );
 }
 
-function InsightItem({ type, text }: { type: 'positive' | 'negative' | 'warning'; text: string }) {
-  const colors = {
-    positive: 'bg-green-400',
-    negative: 'bg-red-400',
-    warning: 'bg-accent'
-  };
+function Insight({ type, text }: { type: 'positive' | 'negative' | 'warning'; text: string }) {
+  const dot = { positive: 'bg-success', negative: 'bg-error', warning: 'bg-warning' }[type];
   return (
-    <div className="flex items-start gap-3 text-sm text-foreground/70">
-      <div className={`mt-1.5 h-2 w-2 rounded-full flex-shrink-0 ${colors[type]}`} />
+    <div className="flex items-start gap-3 text-sm text-muted">
+      <span className={`mt-1.5 h-2 w-2 rounded-full shrink-0 ${dot}`} />
       <p>{text}</p>
     </div>
   );

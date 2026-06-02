@@ -9,212 +9,192 @@ interface AnalysisReportProps {
 
 export const AnalysisReport: React.FC<AnalysisReportProps> = ({ analysis }) => {
   return (
-    <div className="space-y-8 animate-fade-in-up">
-      {/* Overview Scores */}
-      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        <ScoreCard 
-          title="Mentoring Effectiveness Score (MES)" 
-          score={analysis.mes_score} 
+    <div className="space-y-6 animate-fade-in-up">
+      {/* Score grid */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <ScoreCard
+          title="Mentoring Effectiveness Score (MES)"
+          score={analysis.mes_score}
           description="Score consolidado da qualidade da sessão"
         />
         <div className="grid grid-cols-2 gap-4 lg:col-span-2">
-          <ScoreCard title="Clareza" score={analysis.dimensions?.clarity} />
-          <ScoreCard title="Profundidade" score={analysis.dimensions?.depth} />
-          <ScoreCard title="Conexão" score={analysis.dimensions?.connection} />
-          <ScoreCard title="Eficiência" score={analysis.dimensions?.efficiency} />
-          <ScoreCard title="Consistência" score={analysis.dimensions?.consistency} />
+          <ScoreCard title="Clareza"       score={analysis.dimensions?.clarity} />
+          <ScoreCard title="Profundidade"  score={analysis.dimensions?.depth} />
+          <ScoreCard title="Conexão"       score={analysis.dimensions?.connection} />
+          <ScoreCard title="Eficiência"    score={analysis.dimensions?.efficiency} />
+          <ScoreCard title="Consistência"  score={analysis.dimensions?.consistency} />
         </div>
       </div>
 
-      {/* Talk Time & Detailed Stats */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-        {/* Talk Time Bar */}
-        <div className="glass rounded-3xl p-8 lg:col-span-1">
-          <h3 className="text-sm font-semibold text-foreground/40 uppercase tracking-wider flex items-center gap-2 mb-6">
-            <MessageSquare size={16} /> Equilíbrio de Fala
+      {/* Talk time + Stats */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+        {/* Talk time */}
+        <div className="card rounded-xl p-6">
+          <h3 className="flex items-center gap-2 text-xs font-semibold text-muted uppercase tracking-wider mb-5">
+            <MessageSquare size={14} /> Equilíbrio de Fala
           </h3>
-          <div className="space-y-6">
-            <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden flex">
-              <div 
-                className="h-full bg-primary transition-all duration-1000" 
-                style={{ width: `${analysis.talk_time?.mentor_percentage || 50}%` }}
-              />
-              <div 
-                className="h-full bg-white/10 transition-all duration-1000" 
-                style={{ width: `${analysis.talk_time?.mentee_percentage || 50}%` }}
-              />
+          <div className="h-3 w-full rounded-full overflow-hidden flex bg-gray-100">
+            <div
+              className="h-full bg-primary transition-all duration-700 rounded-l-full"
+              style={{ width: `${analysis.talk_time?.mentor_percentage ?? 50}%` }}
+            />
+            <div
+              className="h-full bg-gray-300 transition-all duration-700 rounded-r-full"
+              style={{ width: `${analysis.talk_time?.mentee_percentage ?? 50}%` }}
+            />
+          </div>
+          <div className="flex justify-between mt-4 text-sm">
+            <div>
+              <p className="text-xs text-muted font-medium">Mentor</p>
+              <p className="text-2xl font-bold text-primary">{analysis.talk_time?.mentor_percentage}%</p>
             </div>
-            <div className="flex justify-between text-xs font-medium">
-              <div className="flex flex-col gap-1">
-                <span className="text-primary">Mentor</span>
-                <span className="text-xl font-bold">{analysis.talk_time?.mentor_percentage}%</span>
-              </div>
-              <div className="flex flex-col gap-1 text-right">
-                <span className="text-foreground/40">Mentorado</span>
-                <span className="text-xl font-bold">{analysis.talk_time?.mentee_percentage}%</span>
-              </div>
+            <div className="text-right">
+              <p className="text-xs text-muted font-medium">Mentorado</p>
+              <p className="text-2xl font-bold text-foreground">{analysis.talk_time?.mentee_percentage}%</p>
             </div>
           </div>
         </div>
 
-        {/* Question & Empathy Stats */}
-        <div className="glass rounded-3xl p-8 lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-8">
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-foreground/40 font-medium">Perguntas Abertas</span>
-            <div className="text-3xl font-bold text-primary">{analysis.detailed_stats?.open_questions || 0}</div>
-            <TrendingUp size={16} className="text-green-500/50" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-foreground/40 font-medium">Perguntas Fechadas</span>
-            <div className="text-3xl font-bold text-foreground/60">{analysis.detailed_stats?.closed_questions || 0}</div>
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-foreground/40 font-medium">Marcadores Empatia</span>
-            <div className="text-3xl font-bold text-pink-500/80">{analysis.detailed_stats?.empathy_markers || 0}</div>
-            <Heart size={16} className="text-pink-500/30" />
-          </div>
-          <div className="flex flex-col gap-2">
-            <span className="text-xs text-foreground/40 font-medium">Looping/Síntese</span>
-            <div className="text-3xl font-bold text-blue-500/80">{analysis.detailed_stats?.looping_count || 0}</div>
-            <Quote size={16} className="text-blue-500/30" />
-          </div>
+        {/* Stat counters */}
+        <div className="card rounded-xl p-6 lg:col-span-2 grid grid-cols-2 sm:grid-cols-4 gap-6">
+          <StatCounter label="Perguntas Abertas"  value={analysis.detailed_stats?.open_questions ?? 0}  color="text-primary"      Icon={TrendingUp} />
+          <StatCounter label="Perguntas Fechadas" value={analysis.detailed_stats?.closed_questions ?? 0} color="text-muted"        />
+          <StatCounter label="Marcadores Empatia" value={analysis.detailed_stats?.empathy_markers ?? 0}  color="text-pink-600"     Icon={Heart} />
+          <StatCounter label="Looping/Síntese"    value={analysis.detailed_stats?.looping_count ?? 0}    color="text-blue-600"     Icon={Quote} />
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {/* Strengths & Improvements */}
-        <div className="space-y-6">
-          <section className="glass rounded-3xl p-8">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <CheckCircle2 className="h-5 w-5 text-green-400" />
-              Pontos Fortes
-            </h3>
-            <ul className="mt-4 space-y-3">
-              {analysis.strengths.map((item: string, i: number) => (
-                <li key={i} className="text-sm text-foreground/70 flex gap-2">
-                  <span className="text-primary">•</span> {item}
-                </li>
-              ))}
-            </ul>
-          </section>
-
-          <section className="glass rounded-3xl p-8 border-accent/20">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-              <AlertCircle className="h-5 w-5 text-accent" />
-              Oportunidades de Melhoria
-            </h3>
-            <ul className="mt-4 space-y-3">
-              {analysis.improvements.map((item: string, i: number) => (
-                <li key={i} className="text-sm text-foreground/70 flex gap-2">
-                  <span className="text-accent">•</span> {item}
-                </li>
-              ))}
-            </ul>
-          </section>
-        </div>
-
-        {/* Micro-adjustments */}
-        <section className="glass rounded-3xl p-8 bg-primary/5 border-primary/20">
-          <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-            <Lightbulb className="h-5 w-5 text-primary" />
-            Micro-ajustes (Próximos Passos)
+      {/* Strengths + Improvements */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div className="card rounded-xl p-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-4">
+            <CheckCircle2 className="h-4 w-4 text-success" /> Pontos Fortes
           </h3>
-          <div className="mt-6 space-y-6">
-            {analysis.micro_adjustments.map((adj: any, i: number) => (
-              <div key={i} className="space-y-2">
-                <h4 className="text-sm font-bold text-primary">{adj.topic}</h4>
-                <p className="text-sm text-foreground/80 leading-relaxed italic">
-                  "{adj.suggestion}"
-                </p>
-                {adj.context_snippet && (
-                  <div className="mt-2 rounded-lg bg-black/20 p-3 text-xs text-foreground/40 font-mono">
-                    Contexto: {adj.context_snippet}
-                  </div>
-                )}
-              </div>
+          <ul className="space-y-3">
+            {analysis.strengths.map((item, i) => (
+              <li key={i} className="flex gap-3 text-sm text-muted leading-relaxed">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-success shrink-0" />
+                {item}
+              </li>
             ))}
-          </div>
-        </section>
+          </ul>
+        </div>
+
+        <div className="card rounded-xl p-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-4">
+            <AlertCircle className="h-4 w-4 text-warning" /> Oportunidades de Melhoria
+          </h3>
+          <ul className="space-y-3">
+            {analysis.improvements.map((item, i) => (
+              <li key={i} className="flex gap-3 text-sm text-muted leading-relaxed">
+                <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-warning shrink-0" />
+                {item}
+              </li>
+            ))}
+          </ul>
+        </div>
       </div>
 
-      {/* Phase 2: Golden Questions & Red Flags */}
-      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-        {/* Golden Questions */}
-        {analysis.golden_questions && analysis.golden_questions.length > 0 && (
-          <section className="glass rounded-3xl p-8 bg-amber-500/5 border-amber-500/20">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-amber-500">
-              <Star className="h-5 w-5 fill-amber-500/20" />
-              Perguntas de Ouro
-            </h3>
-            <div className="mt-6 space-y-6">
-              {analysis.golden_questions.map((gq: any, i: number) => (
-                <div key={i} className="relative pl-6 border-l-2 border-amber-500/20">
-                  <p className="text-base font-medium text-foreground italic">"{gq.question}"</p>
-                  <div className="mt-2 space-y-1">
-                    <p className="text-xs text-foreground/40"><span className="text-amber-500/60 font-bold uppercase mr-1">Por que:</span> {gq.reason}</p>
-                    <p className="text-xs text-foreground/40"><span className="text-amber-500/60 font-bold uppercase mr-1">Impacto:</span> {gq.impact}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* Red Flags */}
-        {analysis.red_flags && analysis.red_flags.length > 0 && (
-          <section className="glass rounded-3xl p-8 bg-red-500/5 border-red-500/20">
-            <h3 className="flex items-center gap-2 text-lg font-semibold text-red-500">
-              <ShieldAlert className="h-5 w-5" />
-              Pontos de Atenção (Red Flags)
-            </h3>
-            <div className="mt-6 space-y-6">
-              {analysis.red_flags.map((rf: any, i: number) => (
-                <div key={i} className="space-y-2">
-                  <div className="flex items-start gap-3">
-                    <div className="mt-1 h-1.5 w-1.5 rounded-full bg-red-500 shrink-0" />
-                    <p className="text-sm font-semibold text-foreground/80">{rf.moment}</p>
-                  </div>
-                  <p className="pl-4 text-xs text-foreground/40 leading-relaxed">
-                    <span className="text-red-500/60 font-bold uppercase mr-1">Risco:</span> {rf.risk}
-                  </p>
-                  <div className="pl-4 mt-2">
-                    <div className="rounded-xl bg-white/5 p-3 text-xs text-foreground/60 border border-white/5">
-                      <span className="text-green-500 font-bold mr-2">Alternativa:</span> {rf.alternative}
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
-
-      {/* Conversation Flow */}
-      <section className="glass rounded-3xl p-8">
-        <h3 className="flex items-center gap-2 text-lg font-semibold text-foreground">
-          <Clock className="h-5 w-5 text-foreground/60" />
-          Estrutura da Conversa
+      {/* Micro-adjustments */}
+      <div className="card rounded-xl p-6 bg-primary-light border-primary/20">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-primary mb-5">
+          <Lightbulb className="h-4 w-4" /> Micro-ajustes · Próximos Passos
         </h3>
-        <div className="mt-8 relative border-l border-white/10 ml-4 space-y-8 pb-4">
-          {analysis.conversation_blocks.map((block: any, i: number) => (
-            <div key={i} className="relative pl-8">
-              <div className="absolute -left-1.5 top-1.5 h-3 w-3 rounded-full bg-primary ring-4 ring-background" />
-              <div className="flex items-baseline justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <h4 className="font-semibold text-foreground">{block.type}</h4>
-                  {block.sentiment === 'Positive' && <span className="h-2 w-2 rounded-full bg-green-500 shadow-lg shadow-green-500/20" title="Sentimento Positivo" />}
-                  {block.sentiment === 'Critical' && <span className="h-2 w-2 rounded-full bg-accent shadow-lg shadow-accent/20" title="Momento Crítico" />}
-                </div>
-                <div className="flex gap-2 text-xs text-foreground/30 font-mono">
-                  <span>{block.start_time || '00:00'}</span>
-                  {block.end_time && <span>- {block.end_time}</span>}
-                </div>
-              </div>
-              <p className="mt-1 text-sm text-foreground/50">{block.summary}</p>
+        <div className="space-y-5">
+          {analysis.micro_adjustments.map((adj, i) => (
+            <div key={i} className="space-y-1.5">
+              <p className="text-sm font-semibold text-primary">{adj.topic}</p>
+              <p className="text-sm text-foreground leading-relaxed">"{adj.suggestion}"</p>
+              {adj.context_snippet && (
+                <p className="text-xs text-muted bg-white/60 rounded-lg px-3 py-2 font-mono border border-primary/10">
+                  Contexto: {adj.context_snippet}
+                </p>
+              )}
             </div>
           ))}
         </div>
-      </section>
+      </div>
+
+      {/* Golden questions + Red flags */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        {analysis.golden_questions?.length > 0 && (
+          <div className="card rounded-xl p-6 bg-amber-50 border-amber-200">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-amber-700 mb-5">
+              <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> Perguntas de Ouro
+            </h3>
+            <div className="space-y-5">
+              {analysis.golden_questions.map((gq, i) => (
+                <div key={i} className="pl-4 border-l-2 border-amber-300 space-y-1">
+                  <p className="text-sm font-medium text-foreground">"{gq.question}"</p>
+                  <p className="text-xs text-muted"><span className="font-semibold text-amber-600 uppercase mr-1">Por que:</span>{gq.reason}</p>
+                  {gq.impact && <p className="text-xs text-muted"><span className="font-semibold text-amber-600 uppercase mr-1">Impacto:</span>{gq.impact}</p>}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {analysis.red_flags?.length > 0 && (
+          <div className="card rounded-xl p-6 bg-red-50 border-red-200">
+            <h3 className="flex items-center gap-2 text-sm font-semibold text-red-600 mb-5">
+              <ShieldAlert className="h-4 w-4" /> Pontos de Atenção
+            </h3>
+            <div className="space-y-5">
+              {analysis.red_flags.map((rf, i) => (
+                <div key={i} className="space-y-2">
+                  <div className="flex items-start gap-2">
+                    <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-error shrink-0" />
+                    <p className="text-sm font-semibold text-foreground">{rf.moment}</p>
+                  </div>
+                  <p className="pl-3.5 text-xs text-muted"><span className="font-semibold text-red-600 uppercase mr-1">Risco:</span>{rf.risk}</p>
+                  {rf.alternative && (
+                    <div className="pl-3.5">
+                      <p className="text-xs bg-white rounded-lg px-3 py-2 border border-red-200">
+                        <span className="font-semibold text-success mr-1">Alternativa:</span>{rf.alternative}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Conversation flow */}
+      <div className="card rounded-xl p-6">
+        <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground mb-6">
+          <Clock className="h-4 w-4 text-muted" /> Estrutura da Conversa
+        </h3>
+        <div className="relative border-l-2 border-gray-200 ml-3 space-y-6 pb-2">
+          {analysis.conversation_blocks.map((block, i) => (
+            <div key={i} className="relative pl-7">
+              <div className="absolute -left-[9px] top-1 h-4 w-4 rounded-full bg-primary ring-2 ring-white" />
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-semibold text-foreground">{block.type}</span>
+                  {block.sentiment === 'Positive' && <span className="h-2 w-2 rounded-full bg-success" title="Positivo" />}
+                  {block.sentiment === 'Critical' && <span className="h-2 w-2 rounded-full bg-error" title="Crítico" />}
+                </div>
+                <span className="text-xs text-muted font-mono">
+                  {block.start_time ?? '00:00'}{block.end_time ? ` – ${block.end_time}` : ''}
+                </span>
+              </div>
+              <p className="text-sm text-muted">{block.summary}</p>
+            </div>
+          ))}
+        </div>
+      </div>
     </div>
   );
 };
+
+function StatCounter({ label, value, color, Icon }: { label: string; value: number; color: string; Icon?: React.ElementType }) {
+  return (
+    <div className="flex flex-col gap-1">
+      <p className="text-xs text-muted font-medium">{label}</p>
+      <p className={`text-3xl font-bold ${color}`}>{value}</p>
+      {Icon && <Icon size={14} className={`${color} opacity-60`} />}
+    </div>
+  );
+}

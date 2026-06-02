@@ -2,17 +2,25 @@
 
 @theme {
   --color-background: var(--background);
+  --color-surface: var(--surface);
   --color-foreground: var(--foreground);
-  --color-primary: oklch(0.6 0.2 260);
-  --color-secondary: oklch(0.7 0.1 260);
-  --color-accent: oklch(0.8 0.15 200);
+  --color-muted: var(--muted);
+  --color-primary: #1a73e8;
+  --color-primary-light: #e8f0fe;
+  --color-border: #dadce0;
+  --color-success: #34a853;
+  --color-error: #ea4335;
+  --color-warning: #f9ab00;
 }
 
 :root {
-  --background: oklch(0.1 0.02 260);
-  --foreground: oklch(0.95 0.01 260);
-  --card: oklch(0.15 0.02 260);
-  --border: oklch(0.25 0.02 260);
+  --background: #f8f9fa;
+  --surface:    #ffffff;
+  --foreground: #202124;
+  --muted:      #5f6368;
+  --border:     #dadce0;
+  --shadow-sm:  0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+  --shadow-md:  0 1px 3px 0 rgba(60,64,67,.3), 0 4px 8px 3px rgba(60,64,67,.15);
 }
 
 body {
@@ -28,10 +36,35 @@ body {
   }
 }
 
+/* Material card — replaces the old glass morphism */
+.glass {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.glass:hover {
+  box-shadow: var(--shadow-md);
+  transform: none;
+}
+
+/* Explicit card alias for new code */
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: var(--shadow-md);
+}
+
 @keyframes fadeInUp {
   from {
     opacity: 0;
-    transform: translateY(20px);
+    transform: translateY(12px);
   }
   to {
     opacity: 1;
@@ -40,18 +73,5 @@ body {
 }
 
 .animate-fade-in-up {
-  animation: fadeInUp 0.6s ease-out forwards;
-}
-
-.glass {
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.glass:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.12);
-  transform: translateY(-2px);
+  animation: fadeInUp 0.4s ease-out forwards;
 }
