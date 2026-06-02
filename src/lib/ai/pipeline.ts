@@ -53,7 +53,11 @@ export async function analyzeSession(
 
     const trimmedTranscript = cleanedTranscript.length > characterLimit
       ? (options?.fullCoverage
-          ? cleanedTranscript.substring(0, characterLimit) + "\n... [Transcrição truncada]"
+          ? (() => {
+              const nl = cleanedTranscript.lastIndexOf('\n', characterLimit);
+              const cutAt = nl > characterLimit * 0.9 ? nl : characterLimit;
+              return cleanedTranscript.substring(0, cutAt) + "\n... [Transcrição truncada]";
+            })()
           : smartSampleTranscript(cleanedTranscript, characterLimit))
       : cleanedTranscript;
 
@@ -76,7 +80,7 @@ export async function analyzeSession(
 
         const model = genAI.getGenerativeModel({
           model: "gemini-3.5-flash",
-          generationConfig: { maxOutputTokens: 8192, temperature: 0.1 },
+          generationConfig: { maxOutputTokens: 16384, temperature: 0.1 },
           safetySettings: [
             { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },
             { category: HarmCategory.HARM_CATEGORY_HATE_SPEECH, threshold: HarmBlockThreshold.BLOCK_NONE },

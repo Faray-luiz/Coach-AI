@@ -20,7 +20,7 @@ export default function TestAnalysisPage() {
   const [isClearing, setIsClearing] = useState(false);
   const [isExtractingFile, setIsExtractingFile] = useState(false);
   const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
-  const [compressionInfo, setCompressionInfo] = useState<{ reductionPct: number; originalLength: number } | null>(null);
+  const [fileSize, setFileSize] = useState<number | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { status, analysis: result, isCached, error, startAnalysis, reset } = useMentorshipStore();
 
@@ -49,7 +49,7 @@ export default function TestAnalysisPage() {
       if (data.error) throw new Error(data.error);
       setTranscript(data.text);
       setUploadedFilename(data.filename);
-      setCompressionInfo(data.compressionInfo || null);
+      setFileSize(data.size || null);
     } catch (err: any) {
       alert(err.message || 'Erro ao extrair texto do arquivo.');
     } finally {
@@ -148,13 +148,13 @@ export default function TestAnalysisPage() {
                 <div className="flex items-center justify-between rounded-lg bg-primary-light border border-primary/20 px-3 py-1.5">
                   <span className="text-xs font-medium text-primary flex items-center gap-1.5">
                     <FileText size={12} /> {uploadedFilename}
-                    {compressionInfo && (
-                      <span className="ml-1 text-[10px] bg-green-100 text-green-700 rounded-full px-1.5 py-0.5 font-semibold">
-                        -{compressionInfo.reductionPct}% comprimido
+                    {fileSize && (
+                      <span className="ml-1 text-[10px] bg-primary-light text-primary rounded-full px-1.5 py-0.5 font-semibold">
+                        {fileSize > 1024 * 1024 ? `${(fileSize / 1024 / 1024).toFixed(1)} MB` : `${Math.round(fileSize / 1024)} KB`}
                       </span>
                     )}
                   </span>
-                  <button onClick={() => { setUploadedFilename(null); setTranscript(''); setCompressionInfo(null); }} className="text-primary/60 hover:text-primary">
+                  <button onClick={() => { setUploadedFilename(null); setTranscript(''); setFileSize(null); }} className="text-primary/60 hover:text-primary">
                     <X size={14} />
                   </button>
                 </div>

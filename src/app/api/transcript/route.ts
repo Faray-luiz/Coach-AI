@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mammoth from 'mammoth';
-import { cleanTranscript } from '@/lib/ai/utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -29,21 +28,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Arquivo sem conteúdo textual legível' }, { status: 400 });
     }
 
-    // Limpa formato incremental de STT antes de retornar
-    const cleaned = cleanTranscript(rawText);
-    const wasCompressed = cleaned.length < rawText.length * 0.9;
-
     return NextResponse.json({
-      text: cleaned,
+      text: rawText,
       filename: file.name,
       size: file.size,
-      ...(wasCompressed && {
-        compressionInfo: {
-          originalLength: rawText.length,
-          cleanedLength: cleaned.length,
-          reductionPct: Math.round((1 - cleaned.length / rawText.length) * 100),
-        },
-      }),
     });
   } catch (error: any) {
     console.error('[API Transcript] Erro ao extrair texto:', error);
