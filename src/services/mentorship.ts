@@ -241,21 +241,9 @@ export class MentorshipService {
           writeLocalDb(db);
           Logger.info("Saved analysis to Local DB", { sessionId });
         } else {
-          // Se por algum motivo a sessão pendente não foi salva antes, criamos agora
-          const hash = this.hashTranscript(transcript);
-          db.sessions.push({
-            id: sessionId,
-            mentor_id: 'test-mentor',
-            mentee_name: 'Mentorado',
-            topic: 'Sessão de Mentoria',
-            transcript,
-            transcript_hash: hash,
-            status: 'completed',
-            created_at: new Date().toISOString(),
-            processed_at: new Date().toISOString(),
-            analysis_result: analysis
-          });
-          writeLocalDb(db);
+          // Sessão foi criada no Supabase mas não existe no local DB (Supabase caiu
+          // após startSession). Não criar registro fantasma com dados incompletos.
+          console.warn("[Local DB] Sessão não encontrada localmente — resultado não persistido:", sessionId);
         }
 
         return analysis;
@@ -307,6 +295,31 @@ export class MentorshipService {
     return [...db.sessions].sort((a, b) => 
       new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
     );
+  }
+
+  /**
+   * Busca uma sessão pelo ID (status + analysis_result) com fallback local.
+   */
+  static async getSessionById(id: string): Promise<{ status: string; analysis_result: any } | null> {
+    const isOnline = await checkSupabaseConnection();
+
+    if (isOnline && supabase) {
+      try {
+        const { data, error } = await supabase
+          .from('mentorship_sessions')
+          .select('status, analysis_result')
+          .eq('id', id)
+          .single();
+        if (!error && data) return data;
+      } catch (error: any) {
+        console.warn("[Supabase] getSessionById falhou, tentando local...", error.message);
+      }
+    }
+
+    const db = readLocalDb();
+    const session = db.sessions.find(s => s.id === id);
+    if (!session) return null;
+    return { status: session.status, analysis_result: session.analysis_result ?? null };
   }
 
   /**

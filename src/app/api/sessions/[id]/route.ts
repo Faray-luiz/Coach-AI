@@ -1,21 +1,14 @@
-import { supabase } from '@/lib/supabase';
+import { MentorshipService } from '@/services/mentorship';
 import { NextResponse } from 'next/server';
 
 export async function GET(
-  req: Request,
+  _req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const { id } = await params;
-  
-  if (!supabase) return NextResponse.json({ error: 'DB disconnect' }, { status: 500 });
 
-  const { data, error } = await supabase
-    .from('mentorship_sessions')
-    .select('status, analysis_result')
-    .eq('id', id)
-    .single();
+  const session = await MentorshipService.getSessionById(id);
+  if (!session) return NextResponse.json({ error: 'Sessão não encontrada' }, { status: 404 });
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 404 });
-
-  return NextResponse.json(data);
+  return NextResponse.json(session);
 }

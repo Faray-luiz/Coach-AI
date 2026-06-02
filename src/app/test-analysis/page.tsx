@@ -1,8 +1,8 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { AnalysisReport } from '@/components/AnalysisReport';
-import { Play, Loader2, FileText, Brain, Zap, AlertCircle, Trash2 } from 'lucide-react';
+import { Play, Loader2, FileText, Brain, Zap, AlertCircle, Trash2, Upload, X } from 'lucide-react';
 import { SYSTEM_PROMPT } from '@/lib/ai/prompts';
 import { useMentorshipStore } from '@/store/useMentorshipStore';
 
@@ -18,6 +18,9 @@ export default function TestAnalysisPage() {
   const [transcript, setTranscript] = useState('');
   const [systemPrompt, setSystemPrompt] = useState(SYSTEM_PROMPT);
   const [isClearing, setIsClearing] = useState(false);
+  const [isExtractingFile, setIsExtractingFile] = useState(false);
+  const [uploadedFilename, setUploadedFilename] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const { status, analysis: result, isCached, error, startAnalysis, reset } = useMentorshipStore();
 
   const isLoading = status === 'analyzing';
@@ -25,6 +28,26 @@ export default function TestAnalysisPage() {
   const handleTest = async () => {
     if (!transcript) return;
     await startAnalysis({ transcript, mentor_id: 'test-mentor', mentee_name: 'Test Mentee', topic: 'Mentoria Experimental' });
+  };
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsExtractingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/transcript', { method: 'POST', body: formData });
+      const data = await res.json();
+      if (data.error) throw new Error(data.error);
+      setTranscript(data.text);
+      setUploadedFilename(data.filename);
+    } catch (err: any) {
+      alert(err.message || 'Erro ao extrair texto do arquivo.');
+    } finally {
+      setIsExtractingFile(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+    }
   };
 
   const handleClearHistory = async () => {
@@ -87,17 +110,47 @@ export default function TestAnalysisPage() {
             <div className="flex flex-col gap-1">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-medium text-muted">Transcrição da Sessão</label>
-                <button
-                  onClick={() => setTranscript(SYNTHETIC_TRANSCRIPT)}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
-                >
-                  <FileText size={11} /> Usar dado sintético
-                </button>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setTranscript(SYNTHETIC_TRANSCRIPT)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline"
+                  >
+                    <FileText size={11} /> Dado sintético
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isExtractingFile}
+                    className="inline-flex items-center gap-1 text-xs font-semibold text-primary hover:underline disabled:opacity-50"
+                  >
+                    {isExtractingFile
+                      ? <><Loader2 size={11} className="animate-spin" /> Extraindo...</>
+                      : <><Upload size={11} /> Subir arquivo</>}
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".pdf,.docx,.txt"
+                    className="sr-only"
+                    onChange={handleFileUpload}
+                  />
+                </div>
               </div>
+
+              {uploadedFilename && (
+                <div className="flex items-center justify-between rounded-lg bg-primary-light border border-primary/20 px-3 py-1.5">
+                  <span className="text-xs font-medium text-primary flex items-center gap-1.5">
+                    <FileText size={12} /> {uploadedFilename}
+                  </span>
+                  <button onClick={() => { setUploadedFilename(null); setTranscript(''); }} className="text-primary/60 hover:text-primary">
+                    <X size={14} />
+                  </button>
+                </div>
+              )}
+
               <textarea
                 value={transcript}
-                onChange={e => setTranscript(e.target.value)}
-                placeholder="Cole a transcrição da mentoria aqui..."
+                onChange={e => { setTranscript(e.target.value); if (uploadedFilename) setUploadedFilename(null); }}
+                placeholder="Cole a transcrição ou suba um arquivo (.pdf, .docx, .txt)..."
                 className="w-full rounded-lg border border-border bg-gray-50 p-3 text-sm min-h-[200px] focus:outline-none focus:ring-2 focus:ring-primary/40 focus:border-primary transition-all resize-y leading-relaxed"
               />
             </div>

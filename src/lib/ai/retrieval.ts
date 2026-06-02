@@ -59,13 +59,22 @@ export async function getRelevantContext(transcript: string): Promise<string> {
     // Fallback: busca por similaridade vetorial em memória local
     if (allChunks.length === 0) {
       const localChunks = await MentorshipService.getLocalKnowledge();
-      allChunks = localChunks.map((chunk: any) => ({
-        id: chunk.id || Math.random().toString(),
-        content: chunk.content,
-        metadata: chunk.metadata,
-        // Usa a maior similaridade entre todos os segmentos
-        similarity: Math.max(...embeddings.map(emb => cosineSimilarity(emb, chunk.embedding || [])))
-      })).filter((chunk: any) => chunk.similarity > 0.5);
+      let skipped = 0;
+      allChunks = localChunks
+        .filter((chunk: any) => {
+          if (!chunk.embedding || chunk.embedding.length === 0) { skipped++; return false; }
+          return true;
+        })
+        .map((chunk: any) => ({
+          id: chunk.id || Math.random().toString(),
+          content: chunk.content,
+          metadata: chunk.metadata,
+          similarity: Math.max(...embeddings.map(emb => cosineSimilarity(emb, chunk.embedding)))
+        }))
+        .filter((chunk: any) => chunk.similarity > 0.5);
+      if (skipped > 0) {
+        console.warn(`[Retrieval] ${skipped} chunk(s) ignorados por não terem embedding.`);
+      }
     }
 
     if (allChunks.length === 0) return "";

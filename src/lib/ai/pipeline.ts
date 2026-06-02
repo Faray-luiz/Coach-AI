@@ -5,7 +5,17 @@ import { Logger } from "@/lib/logger";
 import { getRelevantContext } from "./retrieval";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const MAX_RETRIES = 2;
+const MAX_RETRIES = 3;
+
+function isRateLimitError(err: any): boolean {
+  const msg = (err?.message || '').toLowerCase();
+  return msg.includes('429') || msg.includes('quota') || msg.includes('resource_exhausted') || msg.includes('rate');
+}
+
+function backoffMs(attempt: number, rateLimit: boolean): number {
+  if (rateLimit) return 30_000 + Math.random() * 10_000; // 30–40 s
+  return Math.min(500 * Math.pow(2, attempt) + Math.random() * 500, 10_000); // exp: 500ms→1s→2s→…→10s
+}
 
 /**
  * Pipeline principal de análise de mentoria.
@@ -109,8 +119,10 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
         return validation.data;
       } catch (error: any) {
         lastError = error;
-        Logger.warn(`Attempt ${attempt} failed`, { error: error.message });
-        if (attempt < MAX_RETRIES) await new Promise(resolve => setTimeout(resolve, 1000 * attempt));
+        Logger.warn(`Attempt ${attempt} failed`, { error: error.message, isRateLimit: isRateLimitError(error) });
+        if (attempt < MAX_RETRIES) {
+          await new Promise(resolve => setTimeout(resolve, backoffMs(attempt, isRateLimitError(error))));
+        }
       }
     }
 

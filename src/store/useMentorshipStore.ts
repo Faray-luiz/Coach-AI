@@ -64,9 +64,19 @@ export const useMentorshipStore = create<MentorshipState>((set, get) => ({
   },
 
   pollStatus: async (sessionId: string) => {
+    const MAX_ATTEMPTS = 40;              // 40 × 3s ≈ 2 min
+    const DEADLINE = Date.now() + 5 * 60 * 1000; // 5 min absolutos
+    let attempts = 0;
+
     const check = async () => {
-      // Evita continuar se o usuário resetou o store
       if (get().sessionId !== sessionId) return;
+
+      if (attempts >= MAX_ATTEMPTS || Date.now() > DEADLINE) {
+        set({ status: 'failed', error: 'Tempo limite de análise excedido. Tente novamente.' });
+        return;
+      }
+
+      attempts++;
 
       try {
         const response = await fetch(`/api/sessions/${sessionId}`);
@@ -74,12 +84,10 @@ export const useMentorshipStore = create<MentorshipState>((set, get) => ({
 
         if (data.status === 'completed') {
           set({ status: 'completed', analysis: data.analysis_result });
-          // Recarrega a lista
           await get().fetchSessions();
         } else if (data.status === 'failed') {
           set({ status: 'failed', error: 'O processamento da IA falhou.' });
         } else {
-          // Tenta novamente em 3 segundos
           setTimeout(check, 3000);
         }
       } catch (err) {
