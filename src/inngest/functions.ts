@@ -10,7 +10,8 @@ export const processMentorshipAnalysis = inngest.createFunction(
     triggers: [{ event: 'mentorship/session.received' }],
   },
   async ({ event, step }: { event: any; step: any }) => {
-    const { sessionId, systemPrompt } = event.data;
+    // Evento carrega apenas o sessionId — transcript e systemPrompt vêm do banco.
+    const { sessionId } = event.data as { sessionId: string };
 
     // 1. Marca como 'processing'
     await step.run('update-status-processing', async () => {
@@ -23,21 +24,27 @@ export const processMentorshipAnalysis = inngest.createFunction(
       if (error) console.warn('[Inngest] Falha ao marcar processing:', error.message);
     });
 
-    // 2. Busca o transcript do banco — não vem mais no evento para evitar limite de 256KB
-    const transcript = await step.run('fetch-transcript', async () => {
+    // 2. Busca transcript e system_prompt do banco em um único query
+    const sessionData = await step.run('fetch-session-data', async () => {
       if (!supabase) throw new Error('Supabase não configurado');
       const { data, error } = await supabase
         .from('mentorship_sessions')
-        .select('transcript')
+        .select('transcript, system_prompt')
         .eq('id', sessionId)
         .single();
-      if (error || !data?.transcript) throw new Error('Transcrição não encontrada para sessão: ' + sessionId);
-      return data.transcript as string;
+      if (error || !data?.transcript) {
+        throw new Error('Dados da sessão não encontrados: ' + sessionId);
+      }
+      return { transcript: data.transcript as string, systemPrompt: data.system_prompt as string | null };
     });
 
     // 3. Executa a análise
     const analysis = await step.run('run-ai-analysis', async () => {
-      return await MentorshipService.processAnalysis(sessionId, transcript, systemPrompt);
+      return await MentorshipService.processAnalysis(
+        sessionId,
+        sessionData.transcript,
+        sessionData.systemPrompt ?? undefined,
+      );
     });
 
     return { success: true, sessionId, stats: { talk_time: analysis.talk_time } };

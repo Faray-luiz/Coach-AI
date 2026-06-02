@@ -129,6 +129,7 @@ export class MentorshipService {
     mentee_name: string;
     topic: string;
     hash: string;
+    systemPrompt?: string;
   }) {
     return await Logger.trace("DB_Start_Session", async () => {
       const isOnline = await checkSupabaseConnection();
@@ -154,6 +155,7 @@ export class MentorshipService {
               topic: params.topic,
               transcript: params.transcript,
               transcript_hash: params.hash,
+              system_prompt: params.systemPrompt ?? null,
               status: 'pending',
             })
             .select('id, status')
@@ -182,6 +184,7 @@ export class MentorshipService {
         topic: params.topic,
         transcript: params.transcript,
         transcript_hash: params.hash,
+        system_prompt: params.systemPrompt ?? null,
         status: 'pending',
         created_at: new Date().toISOString(),
         processed_at: null,

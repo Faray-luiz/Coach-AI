@@ -27,18 +27,19 @@ export async function POST(req: Request) {
       mentor_id,
       mentee_name,
       topic,
-      hash
+      hash,
+      systemPrompt,
     });
 
     // 3. Enfileira Job ou Processa Síncronamente (Fallback para Testes/Offline)
     const isOnline = await checkSupabaseConnection();
     if (session.status !== 'completed') {
       if (isOnline && process.env.INNGEST_EVENT_KEY && process.env.INNGEST_EVENT_KEY !== 'key_not_set') {
-        // Não enviar transcript no evento — ele já está salvo no banco pelo
-        // startSession e buscado pelo job, evitando o limite de 256KB do Inngest.
+        // Evento minimalista: só o sessionId. Transcript e systemPrompt
+        // são buscados do banco pelo job, evitando o limite de 256KB do Inngest.
         await inngest.send({
           name: 'mentorship/session.received',
-          data: { sessionId: session.id, systemPrompt },
+          data: { sessionId: session.id },
           id: `analyze-${session.id}`
         });
       } else {

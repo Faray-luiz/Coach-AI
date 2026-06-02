@@ -9,7 +9,8 @@ CREATE TABLE IF NOT EXISTS mentorship_sessions (
   analysis_result JSONB, -- Onde guardamos o JSON da Simi
   status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-  processed_at TIMESTAMP WITH TIME ZONE
+  processed_at TIMESTAMP WITH TIME ZONE,
+  system_prompt TEXT -- prompt customizado da sessão (null = usa o padrão)
 );
 
 -- Habilitar RLS (Row Level Security) se desejar, por enquanto deixaremos aberto para teste
