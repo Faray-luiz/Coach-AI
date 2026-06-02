@@ -15,9 +15,17 @@ CREATE TABLE IF NOT EXISTS knowledge_chunks (
 -- 3. Habilitar RLS (segurança)
 ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY;
 
--- Política simples: permitir leitura para todos (ou ajustar conforme necessidade)
-CREATE POLICY "Allow public read access to knowledge" 
-  ON knowledge_chunks FOR SELECT 
+-- Políticas de acesso (ajustar para autenticação quando necessário)
+CREATE POLICY "Allow public read access to knowledge"
+  ON knowledge_chunks FOR SELECT
+  USING (true);
+
+CREATE POLICY "Allow public insert to knowledge"
+  ON knowledge_chunks FOR INSERT
+  WITH CHECK (true);
+
+CREATE POLICY "Allow public delete from knowledge"
+  ON knowledge_chunks FOR DELETE
   USING (true);
 
 -- 4. Criar índice de busca vetorial (HNSW para performance)

@@ -5,7 +5,7 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 /**
  * Gera um vetor (embedding) para um texto usando o modelo oficial do Google.
  * @param text Texto para transformar em vetor.
- * @returns Array de números (768 dimensões).
+ * @returns Array de números (3072 dimensões).
  */
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
