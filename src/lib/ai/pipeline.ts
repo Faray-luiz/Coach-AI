@@ -42,11 +42,11 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
         Logger.info(`Starting Gemini analysis attempt ${attempt}`, {
           transcript_length: transcript.length,
           trimmed_length: trimmedTranscript.length,
-          model: "gemini-3.1-pro-preview"
+          model: "gemini-3.5-flash"
         });
 
         const model = genAI.getGenerativeModel({
-          model: "gemini-3.1-pro-preview",
+          model: "gemini-3.5-flash",
           generationConfig: { maxOutputTokens: 8192, temperature: 0.1 },
           safetySettings: [
             { category: HarmCategory.HARM_CATEGORY_HARASSMENT, threshold: HarmBlockThreshold.BLOCK_NONE },

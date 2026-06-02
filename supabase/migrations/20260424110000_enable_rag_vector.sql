@@ -7,7 +7,7 @@ CREATE EXTENSION IF NOT EXISTS vector;
 CREATE TABLE IF NOT EXISTS knowledge_chunks (
   id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
   content TEXT NOT NULL,
-  embedding VECTOR(768), -- text-embedding-004 do Gemini usa 768 dimensões
+  embedding VECTOR(3072), -- gemini-embedding-001 do Gemini usa 3072 dimensões
   metadata JSONB,
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
@@ -26,7 +26,7 @@ CREATE INDEX IF NOT EXISTS idx_knowledge_chunks_embedding
 
 -- 5. Função RPC para busca por similaridade de cosseno
 CREATE OR REPLACE FUNCTION match_knowledge (
-  query_embedding VECTOR(768),
+  query_embedding VECTOR(3072),
   match_threshold FLOAT,
   match_count INT
 )

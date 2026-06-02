@@ -1,5 +1,6 @@
-import { supabase } from "../supabase";
+import { supabase, checkSupabaseConnection } from "../supabase";
 import { generateEmbedding } from "./embeddings";
+import { MentorshipService, cosineSimilarity } from "../../services/mentorship";
 
 /**
  * Busca pedaços de conhecimento relevantes para uma transcrição.
@@ -7,27 +8,44 @@ import { generateEmbedding } from "./embeddings";
  * @returns Uma string contendo o contexto consolidado.
  */
 export async function getRelevantContext(transcript: string): Promise<string> {
-  if (!supabase) return "";
-
   try {
     // 1. Gerar embedding para a transcrição (ou parte dela)
-    // Para RAG, geralmente pegamos um resumo ou os últimos trechos,
-    // mas aqui usaremos a transcrição completa (limitada) para a busca.
     const queryEmbedding = await generateEmbedding(transcript.substring(0, 2000));
+    const isOnline = await checkSupabaseConnection();
 
-    // 2. Buscar no Supabase usando a função RPC que criamos no SQL
-    const { data, error } = await supabase.rpc('match_knowledge', {
-      query_embedding: queryEmbedding,
-      match_threshold: 0.5, // Similaridade mínima de 50%
-      match_count: 5        // Trazer os 5 pedaços mais relevantes
-    });
+    let data: any[] = [];
 
-    if (error) {
-      console.error("Erro na busca vetorial:", error.message);
-      return "";
+    if (isOnline && supabase) {
+      // 2. Buscar no Supabase usando a função RPC que criamos no SQL
+      const { data: rpcData, error } = await supabase.rpc('match_knowledge', {
+        query_embedding: queryEmbedding,
+        match_threshold: 0.5, // Similaridade mínima de 50%
+        match_count: 5        // Trazer os 5 pedaços mais relevantes
+      });
+
+      if (error) {
+        console.error("Erro na busca vetorial Supabase:", error.message);
+      } else {
+        data = rpcData || [];
+      }
     }
 
-    if (!data || data.length === 0) {
+    // Fallback: busca por similaridade vetorial em memória local
+    if (data.length === 0) {
+      const localChunks = await MentorshipService.getLocalKnowledge();
+      data = localChunks
+        .map((chunk: any) => ({
+          id: chunk.id || Math.random().toString(),
+          content: chunk.content,
+          metadata: chunk.metadata,
+          similarity: cosineSimilarity(queryEmbedding, chunk.embedding || [])
+        }))
+        .filter((chunk: any) => chunk.similarity > 0.5)
+        .sort((a: any, b: any) => b.similarity - a.similarity)
+        .slice(0, 5);
+    }
+
+    if (data.length === 0) {
       return "";
     }
 
@@ -42,3 +60,4 @@ export async function getRelevantContext(transcript: string): Promise<string> {
     return "";
   }
 }
+

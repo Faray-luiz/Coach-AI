@@ -1,6 +1,6 @@
 # Coach AI - Simi Treinadora 🤖🚀
 
-Plataforma avançada de análise de mentorias baseada em IA, utilizando **Gemini 2.5 Flash**, **RAG (Retrieval-Augmented Generation)** e processamento assíncrono.
+Plataforma avançada de análise de mentorias baseada em IA, utilizando **Gemini 3.5 Flash**, **RAG (Retrieval-Augmented Generation)** e processamento assíncrono.
 
 ## 🌟 Funcionalidades Principais
 
@@ -13,7 +13,7 @@ Plataforma avançada de análise de mentorias baseada em IA, utilizando **Gemini
 ## 🛠️ Stack Tecnológica
 
 - **Framework**: Next.js 15 (App Router)
-- **IA**: Google Gemini 2.5 Flash + text-embedding-004
+- **IA**: Google Gemini 3.5 Flash + gemini-embedding-001 (768 dimensões)
 - **Banco de Dados**: Supabase (PostgreSQL + pgvector)
 - **Jobs/Workflow**: Inngest
 - **Estilização**: Tailwind CSS + Lucide Icons

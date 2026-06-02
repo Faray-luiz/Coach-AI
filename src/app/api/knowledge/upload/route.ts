@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, checkSupabaseConnection } from '@/lib/supabase';
 import { generateEmbedding, generateEmbeddingsBatch } from '@/lib/ai/embeddings';
 import { chunkText } from '@/lib/ai/utils';
 import { Logger } from '@/lib/logger';
+import { MentorshipService } from '@/services/mentorship';
 import mammoth from 'mammoth';
 
 export async function POST(req: NextRequest) {
@@ -64,11 +65,16 @@ export async function POST(req: NextRequest) {
         allInsertions.push(...insertions);
       }
 
-      const { error: dbError } = await supabase
-        .from('knowledge_chunks')
-        .insert(allInsertions);
+      const isOnline = await checkSupabaseConnection();
+      if (isOnline && supabase) {
+        const { error: dbError } = await supabase
+          .from('knowledge_chunks')
+          .insert(allInsertions);
 
-      if (dbError) throw dbError;
+        if (dbError) throw dbError;
+      } else {
+        await MentorshipService.insertLocalKnowledge(allInsertions);
+      }
       return { count: allInsertions.length };
     });
 

@@ -10,7 +10,10 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 export async function generateEmbedding(text: string): Promise<number[]> {
   try {
     const model = genAI.getGenerativeModel({ model: "models/gemini-embedding-001" });
-    const result = await model.embedContent(text);
+    const result = await model.embedContent({
+      content: { role: 'user', parts: [{ text }] },
+      outputDimensionality: 3072
+    } as any);
     return result.embedding.values;
   } catch (error: any) {
     console.error("Erro ao gerar embedding:", error.message);
@@ -25,7 +28,10 @@ export async function generateEmbeddingsBatch(texts: string[]): Promise<number[]
   try {
     const model = genAI.getGenerativeModel({ model: "models/gemini-embedding-001" });
     const result = await model.batchEmbedContents({
-      requests: texts.map(t => ({ content: { role: 'user', parts: [{ text: t }] } }))
+      requests: texts.map(t => ({
+        content: { role: 'user', parts: [{ text: t }] },
+        outputDimensionality: 3072
+      } as any))
     });
     return result.embeddings.map(e => e.values);
   } catch (error: any) {

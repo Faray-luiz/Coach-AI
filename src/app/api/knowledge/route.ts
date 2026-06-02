@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabase, checkSupabaseConnection } from '@/lib/supabase';
+import { MentorshipService } from '@/services/mentorship';
 
 /**
  * API para gerenciar a base de conhecimento (RAG).
@@ -9,13 +10,19 @@ import { supabase } from '@/lib/supabase';
 // GET: Lista todos os arquivos únicos na base de conhecimento
 export async function GET() {
   try {
-    if (!supabase) throw new Error('Supabase not configured');
+    const isOnline = await checkSupabaseConnection();
+    let data: any[] = [];
 
-    const { data, error } = await supabase
-      .from('knowledge_chunks')
-      .select('metadata');
+    if (isOnline && supabase) {
+      const { data: dbData, error } = await supabase
+        .from('knowledge_chunks')
+        .select('metadata');
 
-    if (error) throw error;
+      if (error) throw error;
+      data = dbData || [];
+    } else {
+      data = await MentorshipService.getLocalKnowledge();
+    }
 
     // Extrair nomes de arquivos únicos do JSONB metadata e consolidar info
     const filesMap = new Map();
@@ -57,15 +64,19 @@ export async function DELETE(req: NextRequest) {
   }
 
   try {
-    if (!supabase) throw new Error('Supabase not configured');
+    const isOnline = await checkSupabaseConnection();
 
-    // Usar a sintaxe do Supabase para filtrar campos dentro do JSONB
-    const { error } = await supabase
-      .from('knowledge_chunks')
-      .delete()
-      .filter('metadata->>filename', 'eq', filename);
+    if (isOnline && supabase) {
+      // Usar a sintaxe do Supabase para filtrar campos dentro do JSONB
+      const { error } = await supabase
+        .from('knowledge_chunks')
+        .delete()
+        .filter('metadata->>filename', 'eq', filename);
 
-    if (error) throw error;
+      if (error) throw error;
+    } else {
+      await MentorshipService.deleteLocalKnowledge(filename);
+    }
 
     return NextResponse.json({ success: true, message: `Arquivo ${filename} removido com sucesso.` });
   } catch (error: any) {

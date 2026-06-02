@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS mentorship_sessions (
   mentee_name TEXT,
   topic TEXT,
   transcript TEXT NOT NULL,
+  transcript_hash TEXT, -- SHA-256 hash da transcrição para cache/idempotência
   analysis_result JSONB, -- Onde guardamos o JSON da Simi
   status TEXT DEFAULT 'pending', -- 'pending', 'processing', 'completed', 'failed'
   created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),

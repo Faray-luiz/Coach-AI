@@ -7,6 +7,7 @@ interface MentorshipState {
   analysis: Analysis | null;
   isCached: boolean;
   error: string | null;
+  sessions: any[]; // List of all recordings
   
   // Actions
   startAnalysis: (params: { 
@@ -18,6 +19,8 @@ interface MentorshipState {
   
   pollStatus: (sessionId: string) => Promise<void>;
   reset: () => void;
+  fetchSessions: () => Promise<void>;
+  selectSession: (sessionId: string) => void;
 }
 
 export const useMentorshipStore = create<MentorshipState>((set, get) => ({
@@ -26,8 +29,9 @@ export const useMentorshipStore = create<MentorshipState>((set, get) => ({
   analysis: null,
   isCached: false,
   error: null,
+  sessions: [],
 
-  reset: () => set({ sessionId: null, status: 'idle', analysis: null, isCached: false, error: null }),
+  reset: () => set({ sessionId: null, status: 'idle', analysis: null, isCached: false, error: null, sessions: [] }),
 
   startAnalysis: async (params) => {
     set({ status: 'analyzing', error: null, analysis: null, isCached: false });
@@ -45,9 +49,11 @@ export const useMentorshipStore = create<MentorshipState>((set, get) => ({
 
       set({ sessionId: data.sessionId });
 
-      // Se já veio completo (cache hit), não precisa fazer polling
+      // Se já veio completo (cache hit ou processamento síncrono offline), não precisa fazer polling
       if (data.status === 'completed' && data.analysis) {
         set({ status: 'completed', analysis: data.analysis, isCached: !!data.cached });
+        // Recarrega a lista
+        await get().fetchSessions();
       } else {
         // Inicia o polling
         get().pollStatus(data.sessionId);
@@ -68,6 +74,8 @@ export const useMentorshipStore = create<MentorshipState>((set, get) => ({
 
         if (data.status === 'completed') {
           set({ status: 'completed', analysis: data.analysis_result });
+          // Recarrega a lista
+          await get().fetchSessions();
         } else if (data.status === 'failed') {
           set({ status: 'failed', error: 'O processamento da IA falhou.' });
         } else {
@@ -81,5 +89,41 @@ export const useMentorshipStore = create<MentorshipState>((set, get) => ({
     };
 
     check();
+  },
+
+  fetchSessions: async () => {
+    try {
+      const response = await fetch('/api/sessions');
+      if (response.ok) {
+        const data = await response.json();
+        set({ sessions: data });
+        
+        // Se não houver uma análise selecionada ativa, seleciona a primeira mais recente
+        if (data.length > 0 && !get().analysis) {
+          const latest = data[0];
+          if (latest.status === 'completed' && latest.analysis_result) {
+            set({ 
+              analysis: latest.analysis_result,
+              sessionId: latest.id,
+              status: 'completed'
+            });
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching sessions:', err);
+    }
+  },
+
+  selectSession: (sessionId: string) => {
+    const session = get().sessions.find(s => s.id === sessionId);
+    if (session) {
+      set({ 
+        analysis: session.analysis_result,
+        sessionId: session.id,
+        status: session.status === 'completed' ? 'completed' : 'failed'
+      });
+    }
   }
 }));
+

@@ -1,4 +1,4 @@
-import { startAnalysis } from '../src/lib/ai/retrieval';
+import { MentorshipService } from '../src/services/mentorship';
 
 async function test() {
   console.log('Iniciando teste da IA...');
@@ -14,12 +14,15 @@ Mentor: Interessante. O que te impede de marcar uma conversa de alinhamento indi
   `;
 
   try {
-    const result = await startAnalysis({
+    const hash = MentorshipService.hashTranscript(transcript);
+    const session = await MentorshipService.startSession({
       transcript,
       mentor_id: 'test-mentor',
       mentee_name: 'Test Mentee',
       topic: 'Mentoria Experimental',
+      hash,
     });
+    const result = await MentorshipService.processAnalysis(session.id, transcript);
     
     console.log('Análise concluída com sucesso!');
     console.log(JSON.stringify(result, null, 2));
