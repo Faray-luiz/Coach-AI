@@ -1,6 +1,7 @@
+import { NextResponse } from 'next/server';
 import { MentorshipService } from '@/services/mentorship';
 import { inngest } from '@/inngest/client';
-import { supabase, checkSupabaseConnection } from '@/lib/supabase';
+import { checkSupabaseConnection } from '@/lib/supabase';
 
 export const maxDuration = 30;
 
@@ -9,7 +10,7 @@ export async function POST(req: Request) {
     const { transcript, mentor_id, mentee_name, topic, systemPrompt } = await req.json();
 
     if (!transcript || !mentor_id) {
-      return Response.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
+      return NextResponse.json({ error: 'Faltando dados obrigatórios' }, { status: 400 });
     }
 
     const hash = MentorshipService.hashTranscript(transcript);
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
     // 1. Tenta o Cache (Estado da Arte: Fast Path)
     const cached = await MentorshipService.getCachedAnalysis(hash);
     if (cached) {
-      return Response.json({ status: 'completed', analysis: cached, cached: true });
+      return NextResponse.json({ status: 'completed', analysis: cached, cached: true });
     }
 
     // 2. Inicia/Recupera Sessão (Idempotência no DB)
@@ -41,27 +42,27 @@ export async function POST(req: Request) {
       } else {
         // Fallback: Processamento Síncrono (Offline ou Local)
         const analysis = await MentorshipService.processAnalysis(session.id, transcript, systemPrompt);
-        return Response.json({ status: 'completed', analysis });
+        return NextResponse.json({ status: 'completed', analysis });
       }
     }
 
-    return Response.json({
+    return NextResponse.json({
       status: session.status === 'completed' ? 'completed' : 'queued',
       sessionId: session.id,
     });
 
   } catch (error: any) {
     console.error('[API Analyze] Erro fatal:', error);
-    return Response.json({ error: error.message || 'Erro interno' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Erro interno' }, { status: 500 });
   }
 }
 
 export async function DELETE() {
   try {
     await MentorshipService.deleteAllSessions();
-    return Response.json({ success: true, message: 'Histórico de análises removido com sucesso.' });
+    return NextResponse.json({ success: true, message: 'Histórico de análises removido com sucesso.' });
   } catch (error: any) {
     console.error('[API Analyze] Erro ao deletar:', error);
-    return Response.json({ error: error.message || 'Erro ao deletar histórico' }, { status: 500 });
+    return NextResponse.json({ error: error.message || 'Erro ao deletar histórico' }, { status: 500 });
   }
 }

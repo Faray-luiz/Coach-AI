@@ -1,9 +1,10 @@
 import React from 'react';
 import { CheckCircle2, AlertCircle, Lightbulb, Clock, MessageSquare, Heart, Quote, TrendingUp, Star, ShieldAlert } from 'lucide-react';
 import { ScoreCard } from './ScoreCard';
+import type { Analysis } from '@/lib/ai/schemas';
 
 interface AnalysisReportProps {
-  analysis: any; // Using any for simplicity in this task, should use the type from schemas
+  analysis: Analysis;
 }
 
 export const AnalysisReport: React.FC<AnalysisReportProps> = ({ analysis }) => {

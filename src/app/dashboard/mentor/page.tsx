@@ -5,9 +5,10 @@ import { AnalysisReport } from '@/components/AnalysisReport';
 import { Users, Bell, Play, LayoutDashboard, Brain, AlertCircle, ArrowRight } from 'lucide-react';
 import { useMentorshipStore } from '@/store/useMentorshipStore';
 import Link from 'next/link';
+import type { Analysis } from '@/lib/ai/schemas';
 
 // Usado apenas como demonstração (demo) se não houver dados reais no banco
-const DUMMY_ANALYSIS = {
+const DUMMY_ANALYSIS: Analysis = {
   mes_score: 82,
   dimensions: {
     clarity: 85,
@@ -48,10 +49,10 @@ const DUMMY_ANALYSIS = {
     looping_count: 5
   },
   conversation_blocks: [
-    { type: 'Abertura', summary: 'Alinhamento de expectativas e check-in emocional.', start_time: '00:00', end_time: '05:00', sentiment: 'Positive' },
-    { type: 'Exploração', summary: 'Aprofundamento no desafio de gestão de conflitos da equipe.', start_time: '05:00', end_time: '30:00', sentiment: 'Neutral' },
-    { type: 'Síntese', summary: 'Reflexão sobre os aprendizados e insights gerados.', start_time: '30:00', end_time: '40:00', sentiment: 'Positive' },
-    { type: 'Ação', summary: 'Definição do plano prático para a próxima semana.', start_time: '40:00', end_time: '45:00', sentiment: 'Positive' }
+    { type: 'Abertura' as const, summary: 'Alinhamento de expectativas e check-in emocional.', start_time: '00:00', end_time: '05:00', sentiment: 'Positive' as const },
+    { type: 'Exploração' as const, summary: 'Aprofundamento no desafio de gestão de conflitos da equipe.', start_time: '05:00', end_time: '30:00', sentiment: 'Neutral' as const },
+    { type: 'Síntese' as const, summary: 'Reflexão sobre os aprendizados e insights gerados.', start_time: '30:00', end_time: '40:00', sentiment: 'Positive' as const },
+    { type: 'Ação' as const, summary: 'Definição do plano prático para a próxima semana.', start_time: '40:00', end_time: '45:00', sentiment: 'Positive' as const }
   ],
   golden_questions: [
     {

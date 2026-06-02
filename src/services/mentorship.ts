@@ -6,7 +6,10 @@ import { Logger } from '@/lib/logger';
 import fs from 'fs';
 import path from 'path';
 
-const LOCAL_DB_PATH = path.join(process.cwd(), 'local_database.json');
+// Em Vercel/serverless process.cwd() é read-only; usar /tmp que é gravável
+const LOCAL_DB_PATH = process.env.VERCEL
+  ? '/tmp/local_database.json'
+  : path.join(process.cwd(), 'local_database.json');
 
 // Interface para estruturar o banco de dados JSON local
 interface LocalDatabase {
