@@ -3,7 +3,7 @@ import { SYSTEM_PROMPT, getAnalysisPrompt } from "./prompts";
 import { AnalysisSchema, type Analysis } from "./schemas";
 import { Logger } from "@/lib/logger";
 import { getRelevantContext } from "./retrieval";
-import { cleanTranscript } from "./utils";
+import { cleanTranscript, smartSampleTranscript } from "./utils";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MAX_RETRIES = 3;
@@ -20,13 +20,18 @@ function backoffMs(attempt: number, rateLimit: boolean): number {
 
 /**
  * Pipeline principal de análise de mentoria.
- * Executa RAG, chamada ao Gemini, extração de JSON e normalização.
- * 
- * @param transcript Texto bruto da conversa.
- * @param customPrompt Instruções de sistema customizadas (opcional).
- * @returns Objeto de análise validado pelo Zod.
+ *
+ * @param transcript   Texto bruto da conversa (pode ser grande).
+ * @param customPrompt Prompt de sistema customizado (opcional).
+ * @param options      fullCoverage: true → envia a transcrição completa sem truncagem
+ *                     (usar no path Inngest onde não há limite de 60s).
+ *                     false/omitido → Smart Sampling 40/20/40 para path síncrono.
  */
-export async function analyzeSession(transcript: string, customPrompt?: string): Promise<Analysis> {
+export async function analyzeSession(
+  transcript: string,
+  customPrompt?: string,
+  options?: { fullCoverage?: boolean },
+): Promise<Analysis> {
   return await Logger.trace("AI_Analysis_Pipeline", async () => {
     // 1. Retrieval Stage (RAG)
     // Busca contexto relevante na base de conhecimento para enriquecer a análise.
@@ -43,9 +48,13 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
       reduction_pct: Math.round((1 - cleanedTranscript.length / transcript.length) * 100),
     });
 
-    // Limite de 30k chars após limpeza (era 20k no bruto)
-    const trimmedTranscript = cleanedTranscript.length > 30000
-      ? cleanedTranscript.substring(0, 30000) + "\n... [Transcrição truncada]"
+    // Define o limite de caracteres baseado na opção de cobertura
+    const characterLimit = options?.fullCoverage ? 1_000_000 : 30_000;
+
+    const trimmedTranscript = cleanedTranscript.length > characterLimit
+      ? (options?.fullCoverage
+          ? cleanedTranscript.substring(0, characterLimit) + "\n... [Transcrição truncada]"
+          : smartSampleTranscript(cleanedTranscript, characterLimit))
       : cleanedTranscript;
 
     // Loop de Retentativa com Backoff Exponencial leve

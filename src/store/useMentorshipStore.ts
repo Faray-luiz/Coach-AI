@@ -15,6 +15,7 @@ interface MentorshipState {
     mentor_id: string; 
     mentee_name: string; 
     topic: string;
+    systemPrompt?: string;
   }) => Promise<void>;
   
   pollStatus: (sessionId: string) => Promise<void>;

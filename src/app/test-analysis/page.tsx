@@ -28,7 +28,13 @@ export default function TestAnalysisPage() {
 
   const handleTest = async () => {
     if (!transcript) return;
-    await startAnalysis({ transcript, mentor_id: 'test-mentor', mentee_name: 'Test Mentee', topic: 'Mentoria Experimental' });
+    await startAnalysis({ 
+      transcript, 
+      mentor_id: 'test-mentor', 
+      mentee_name: 'Test Mentee', 
+      topic: 'Mentoria Experimental',
+      systemPrompt
+    });
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {

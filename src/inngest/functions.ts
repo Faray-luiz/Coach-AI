@@ -44,6 +44,7 @@ export const processMentorshipAnalysis = inngest.createFunction(
         sessionId,
         sessionData.transcript,
         sessionData.systemPrompt ?? undefined,
+        { fullCoverage: true, skipFailureStatusUpdate: true }
       );
     });
 

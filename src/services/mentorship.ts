@@ -205,12 +205,17 @@ export class MentorshipService {
    * @param transcript Texto da transcrição.
    * @param systemPrompt Prompt opcional para customizar a IA.
    */
-  static async processAnalysis(sessionId: string, transcript: string, systemPrompt?: string): Promise<Analysis> {
+  static async processAnalysis(
+    sessionId: string,
+    transcript: string,
+    systemPrompt?: string,
+    options?: { fullCoverage?: boolean; skipFailureStatusUpdate?: boolean }
+  ): Promise<Analysis> {
     return await Logger.trace("Domain_Process_Analysis", async () => {
       Logger.info(`Processing analysis`, { sessionId });
       
       try {
-        const analysis = await analyzeSession(transcript, systemPrompt);
+        const analysis = await analyzeSession(transcript, systemPrompt, options);
         const isOnline = await checkSupabaseConnection();
 
         if (isOnline && supabase) {
@@ -248,22 +253,24 @@ export class MentorshipService {
 
         return analysis;
       } catch (error) {
-        const isOnline = await checkSupabaseConnection();
-        if (isOnline && supabase) {
-          try {
-            await supabase
-              .from('mentorship_sessions')
-              .update({ status: 'failed' })
-              .eq('id', sessionId);
-          } catch (e) {}
-        }
+        if (!options?.skipFailureStatusUpdate) {
+          const isOnline = await checkSupabaseConnection();
+          if (isOnline && supabase) {
+            try {
+              await supabase
+                .from('mentorship_sessions')
+                .update({ status: 'failed' })
+                .eq('id', sessionId);
+            } catch (e) {}
+          }
 
-        // Atualizar status local para falhado
-        const db = readLocalDb();
-        const index = db.sessions.findIndex(s => s.id === sessionId);
-        if (index !== -1) {
-          db.sessions[index].status = 'failed';
-          writeLocalDb(db);
+          // Atualizar status local para falhado
+          const db = readLocalDb();
+          const index = db.sessions.findIndex(s => s.id === sessionId);
+          if (index !== -1) {
+            db.sessions[index].status = 'failed';
+            writeLocalDb(db);
+          }
         }
         
         throw error;

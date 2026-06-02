@@ -60,8 +60,58 @@ function extractFinalUtterance(text: string): string {
     if (result.length >= text.length * 0.1) return result;
   }
 
-  // Fallback: pega os últimos 50% das palavras
-  return words.slice(Math.floor(words.length / 2)).join(' ');
+  // Se não houver repetição detectada do primeiro termo, retorna o texto original limpo
+  return text.trim();
+}
+
+/**
+ * Extrai amostras proporcionais de uma transcrição longa para cobrir o arco
+ * completo da conversa (início + meio + fim) sem exceder o limite de tokens.
+ *
+ * Distribuição: 40% início · 20% meio · 40% fim
+ * Quebras sempre em fronteira de linha para não cortar falas no meio.
+ */
+export function smartSampleTranscript(text: string, maxLength: number): string {
+  if (text.length <= maxLength) return text;
+
+  const beginLen  = Math.floor(maxLength * 0.40);
+  const middleLen = Math.floor(maxLength * 0.20);
+  const endLen    = maxLength - beginLen - middleLen;
+
+  // --- Início: até beginLen chars, quebrando na última linha ---
+  const beginRaw = text.substring(0, beginLen);
+  const beginNl  = beginRaw.lastIndexOf('\n');
+  const beginEnd = beginNl > beginLen * 0.75 ? beginNl : beginLen;
+  const begin    = text.substring(0, beginEnd).trimEnd();
+
+  // --- Meio: centrado em text.length/2, quebrando nas bordas ---
+  const midCenter  = Math.floor(text.length / 2);
+  let   mStart     = midCenter - Math.floor(middleLen / 2);
+  const nlMidStart = text.indexOf('\n', mStart);
+  if (nlMidStart > 0 && nlMidStart < mStart + 300) mStart = nlMidStart + 1;
+  let mEnd           = mStart + middleLen;
+  const nlMidEnd     = text.lastIndexOf('\n', mEnd);
+  if (nlMidEnd > mStart) mEnd = nlMidEnd;
+  const middle = text.substring(mStart, mEnd).trim();
+
+  // --- Fim: últimos endLen chars, quebrando no início ---
+  let   eStart  = text.length - endLen;
+  const nlEnd   = text.indexOf('\n', eStart);
+  if (nlEnd > 0 && nlEnd < eStart + 300) eStart = nlEnd + 1;
+  const end = text.substring(eStart).trim();
+
+  const pBeginEnd = Math.round(beginEnd / text.length * 100);
+  const pMidStart = Math.round(mStart   / text.length * 100);
+  const pMidEnd   = Math.round(mEnd     / text.length * 100);
+  const pEndStart = Math.round(eStart   / text.length * 100);
+
+  return [
+    begin,
+    `\n\n[... omitido: ${pBeginEnd}%–${pMidStart}% da transcrição ...]\n\n`,
+    middle,
+    `\n\n[... omitido: ${pMidEnd}%–${pEndStart}% da transcrição ...]\n\n`,
+    end,
+  ].join('');
 }
 
 /**
