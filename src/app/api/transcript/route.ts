@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import mammoth from 'mammoth';
+import { cleanTranscript } from '@/lib/ai/utils';
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,8 +14,7 @@ export async function POST(req: NextRequest) {
 
     if (file.name.endsWith('.pdf')) {
       const pdf = require('pdf-parse-fork');
-      const data = await pdf(buffer);
-      text = data.text;
+      text = (await pdf(buffer)).text;
     } else if (file.name.endsWith('.docx')) {
       const { value } = await mammoth.extractRawText({ buffer });
       text = value;
@@ -24,12 +24,27 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Formato não suportado. Use .pdf, .docx ou .txt' }, { status: 400 });
     }
 
-    const trimmed = text.trim();
-    if (trimmed.length < 10) {
+    const rawText = text.trim();
+    if (rawText.length < 10) {
       return NextResponse.json({ error: 'Arquivo sem conteúdo textual legível' }, { status: 400 });
     }
 
-    return NextResponse.json({ text: trimmed, filename: file.name, size: file.size });
+    // Limpa formato incremental de STT antes de retornar
+    const cleaned = cleanTranscript(rawText);
+    const wasCompressed = cleaned.length < rawText.length * 0.9;
+
+    return NextResponse.json({
+      text: cleaned,
+      filename: file.name,
+      size: file.size,
+      ...(wasCompressed && {
+        compressionInfo: {
+          originalLength: rawText.length,
+          cleanedLength: cleaned.length,
+          reductionPct: Math.round((1 - cleaned.length / rawText.length) * 100),
+        },
+      }),
+    });
   } catch (error: any) {
     console.error('[API Transcript] Erro ao extrair texto:', error);
     return NextResponse.json({ error: 'Falha ao processar arquivo', details: error.message }, { status: 500 });

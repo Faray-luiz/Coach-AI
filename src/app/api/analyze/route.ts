@@ -3,7 +3,7 @@ import { MentorshipService } from '@/services/mentorship';
 import { inngest } from '@/inngest/client';
 import { checkSupabaseConnection } from '@/lib/supabase';
 
-export const maxDuration = 30;
+export const maxDuration = 60;
 
 export async function POST(req: Request) {
   try {

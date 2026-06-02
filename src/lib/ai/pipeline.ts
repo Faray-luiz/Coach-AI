@@ -3,6 +3,7 @@ import { SYSTEM_PROMPT, getAnalysisPrompt } from "./prompts";
 import { AnalysisSchema, type Analysis } from "./schemas";
 import { Logger } from "@/lib/logger";
 import { getRelevantContext } from "./retrieval";
+import { cleanTranscript } from "./utils";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
 const MAX_RETRIES = 3;
@@ -33,10 +34,19 @@ export async function analyzeSession(transcript: string, customPrompt?: string):
     
     let lastError: any;
     
-    // Proteção contra transcrições excessivamente longas (limite de 20k chars)
-    const trimmedTranscript = transcript.length > 20000 
-      ? transcript.substring(0, 20000) + "... [Truncated]" 
-      : transcript;
+    // 1b. Limpeza de formato incremental STT (ex: Google Captions)
+    // Remove repetições do tipo "Oi Oi lara Oi lara tudo bem" → "Oi lara tudo bem"
+    const cleanedTranscript = cleanTranscript(transcript);
+    Logger.info('Transcript cleaned', {
+      original_length: transcript.length,
+      cleaned_length: cleanedTranscript.length,
+      reduction_pct: Math.round((1 - cleanedTranscript.length / transcript.length) * 100),
+    });
+
+    // Limite de 30k chars após limpeza (era 20k no bruto)
+    const trimmedTranscript = cleanedTranscript.length > 30000
+      ? cleanedTranscript.substring(0, 30000) + "\n... [Transcrição truncada]"
+      : cleanedTranscript;
 
     // Loop de Retentativa com Backoff Exponencial leve
     for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
